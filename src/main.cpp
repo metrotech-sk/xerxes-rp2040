@@ -18,9 +18,6 @@
 #include "Communication/RS485.hpp"
 #include "Utils/Log.h"
 
-// preprocess token into string
-#define _quote(x) #x
-
 using namespace std;
 using namespace Xerxes;
 
@@ -80,7 +77,6 @@ int main(void)
     if (useUsb)
     {
         // init usb uart
-        stdio_usb_init();
         userInitUartDisabled();
 
         while (!stdio_usb_connected())
@@ -152,6 +148,7 @@ int main(void)
 
         if (useUsb)
         {
+            xlog_info("Using USB uart");
             constexpr uint32_t printFrequencyHz = 1;
             constexpr uint64_t printIntervalUs = 1e6 / printFrequencyHz;
 
@@ -172,16 +169,20 @@ int main(void)
             auto remainingSleepTime = printIntervalUs - (end - timestamp) - 10;
 
             // sleep in high speed mode for 1 second, watchdog friendly
+            xlog_dbg("Sleeping for 1s");
             sleep_hp(remainingSleepTime);
         }
         else
         {
-            // running on RS485, sync for incoming messages from master, timeout = 5ms
+            // running on RS485, sync for incoming messages from master, timeout
+            // = 5ms
+            xlog_info("Syncing xerxes network");
             xs.sync(5000);
 
             // send char if tx queue is not empty and uart is writable
             if (!queue_is_empty(&txFifo))
             {
+                xlog_dbg("got some data to process");
                 uint txLen = queue_get_level(&txFifo);
                 assert(txLen <= RX_TX_QUEUE_SIZE);
 
@@ -192,7 +193,7 @@ int main(void)
                 {
                     queue_remove_blocking(&txFifo, &toSend[i]);
                 }
-
+                xlog_dbg("Writing data to uart");
                 // write char to bus, this will clear the interrupt
                 uart_write_blocking(uart0, toSend, txLen);
             }
@@ -200,6 +201,7 @@ int main(void)
             if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))
             {
                 // rx fifo is full, set the cpu_overload error flag
+                xlog_info("Queue is full");
                 _reg.errorSet(ERROR_MASK_UART_OVERLOAD);
             }
 
@@ -218,6 +220,7 @@ int main(void)
 
 void core1Entry()
 {
+    xlog_info("Entering core 1");
     uint64_t endOfCycle = 0;
     uint64_t cycleDuration = 0;
     int64_t sleepFor = 0;

@@ -1,4 +1,5 @@
 #include "Slave.hpp"
+#include "Utils/Log.h"
 
 
 namespace Xerxes
@@ -57,10 +58,12 @@ bool Slave::sync(uint32_t timeoutUs)
     if(!xp->readMessage(incoming, timeoutUs))
     {
         // if no message is in buffer
+        xlog_info("No message in buffer");
         return false;
     }
     
     // call appropriate function
+    xlog_dbg("Calling function for message, msgid: "<< std::hex << incoming.msgId);
     call(incoming);
     return true;
 }

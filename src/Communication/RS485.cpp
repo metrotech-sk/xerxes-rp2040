@@ -1,4 +1,5 @@
 #include "RS485.hpp"
+#include "Utils/Log.h"
 
 
 namespace Xerxes
@@ -118,15 +119,18 @@ bool RS485::receivePacket(const uint64_t timeoutUs)
             if(chks == 0)
             {
                 // successfully received whole message
+                xlog_dbg("Successfully received packet: " << incomingMessage.size() << " bytes");
                 return true;
             }   
             else
             {
+                xlog_warn("Checksum error, expected 0, got " << std::hex << chks);
                 return false;
             }
         }
     }
 
+    xlog_warn("Timeout while receiving packet");
     return false;
 }
 
