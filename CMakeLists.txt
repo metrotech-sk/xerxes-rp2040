@@ -12,8 +12,11 @@ set(CMAKE_C_STANDARD 11)
 
 set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 
-set(DEVICE_TYPE_HINT "Possible options for SENSOR_TYPE: SCL3300, SCL3300a, "
-"SCL3400, AI, DiscreteAI, 4DI4DO, ABP, hx711, Encoder, Cutter, EnviroLS, temp")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+set(DEVICE_TYPES "SCL3300" "SCL3300a" "SCL3400" "AnalogInput" "DiscreteAnalog" 
+"4DI4DO" "ABP" "hx711" "Encoder" "Cutter" "LightSound" "temperature" "lis2dw12") 
+set(DEVICE_TYPE_HINT "Possible options for DEVICE_TYPE: ${DEVICE_TYPES}")
 
 # this is the board we are using, we need to set this to use the correct board header and bootloader
 # the board file is: src/Hardware/Board/xerxes_rp2040.h
@@ -58,55 +61,26 @@ elseif(${LOG_LEVEL} EQUAL 5)
     message("LOG_LEVEL set to ${LOG_LEVEL} = TRACE")
 endif()
 
-# check if ${DEVICE_TYPE} is set
-if(NOT DEFINED DEVICE_TYPE)
-	message(FATAL_ERROR "DEVICE_TYPE not set, use -DSENSOR_TYPE=...\n${DEVICE_TYPE_HINT}")
-endif()
-
-# this is the sensor type we are using, we need to set this to use the correct sensor header
-if(${DEVICE_TYPE} STREQUAL "SCL3300")
-	add_compile_definitions(__SHIELD_SCL3300)
-	add_compile_definitions(__DEVICE_CLASS=SCL3300)
-elseif(${DEVICE_TYPE} STREQUAL "SCL3300a")
-	add_compile_definitions(__SHIELD_SCL3300)
-	add_compile_definitions(__DEVICE_CLASS=SCL3300a)
-elseif(${DEVICE_TYPE} STREQUAL "SCL3400")
-	add_compile_definitions(__SHIELD_SCL3400)
-	add_compile_definitions(__DEVICE_CLASS=SCL3400)
-elseif(${DEVICE_TYPE} STREQUAL "AI")
-	add_compile_definitions(__SHIELD_AI)
-	add_compile_definitions(__DEVICE_CLASS=AnalogInput)
-elseif(${DEVICE_TYPE} STREQUAL "AnalogInput")
-	add_compile_definitions(__SHIELD_AI)
-	add_compile_definitions(__DEVICE_CLASS=AnalogInput)
-elseif(${DEVICE_TYPE} STREQUAL "4DI4DO")
-	add_compile_definitions(__SHIELD_4DI4DO)
-	add_compile_definitions(__DEVICE_CLASS=_4DI4DO)
-elseif(${DEVICE_TYPE} STREQUAL "ABP")
-	add_compile_definitions(__SHIELD_ABP)
-	add_compile_definitions(__DEVICE_CLASS=ABP)
-elseif(${DEVICE_TYPE} STREQUAL "hx711")
-	add_compile_definitions(__SHIELD_HX711)
-	add_compile_definitions(__DEVICE_CLASS=HX711)
-elseif(${DEVICE_TYPE} STREQUAL "Encoder")
-    add_compile_definitions(__SHIELD_ENCODER)
-    add_compile_definitions(__DEVICE_CLASS=Encoder)
-elseif(${DEVICE_TYPE} STREQUAL "Cutter")
-    add_compile_definitions(__SHIELD_CUTTER)
-    add_compile_definitions(__TIGHTLOOP)
-    add_compile_definitions(__DEVICE_CLASS=Cutter)
-elseif(${DEVICE_TYPE} STREQUAL "temp")
-    add_compile_definitions(__SHIELD_TEMP)
-    add_compile_definitions(__DEVICE_CLASS=DS18B20)
-elseif(${DEVICE_TYPE} STREQUAL "EnviroLS")
-    add_compile_definitions(__SHIELD_ENVIROLS)
-    add_compile_definitions(__DEVICE_CLASS=LightSound)
-elseif(${DEVICE_TYPE} STREQUAL "DiscreteAI")
-    add_compile_definitions(__SHIELD_DISCRETE_AI)
-    add_compile_definitions(__DEVICE_CLASS=DiscreteAnalog)
-else()
+# check if ${DEVICE_TYPE} is set and is one of the possible options
+if(NOT DEFINED DEVICE_TYPE) 
+	message(FATAL_ERROR "DEVICE_TYPE not set, use -DDEVICE_TYPE=...\n${DEVICE_TYPE_HINT}")
+elseif(NOT ${DEVICE_TYPE} IN_LIST DEVICE_TYPES)
 	message(FATAL_ERROR "DEVICE_TYPE '${DEVICE_TYPE}' is incorrect, use -DDEVICE_TYPE=...\n${DEVICE_TYPE_HINT}")
 endif()
+
+
+# include the correct device config file based on the DEVICE_TYPE set
+include(device-config)  # this will set DEVICE_SOURCES and DEVICE_HEADER
+if(NOT DEFINED DEVICE_HEADER)
+	message(FATAL_ERROR "DEVICE_HEADER not set")
+endif()
+message("DEVICE_HEADER set to ${DEVICE_HEADER}")
+
+# Create the header file using configure_file
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Sensors/SensorHeader.hpp.in
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/Sensors/SensorHeader.hpp
+)
 
 # print warning to clearly show which device type is used and which CLKDIV is set
 message(WARNING "\nDEVICE_TYPE set to '${DEVICE_TYPE}'."
@@ -137,20 +111,8 @@ add_executable(
 	src/Core/Register.cpp
 	src/Sensors/Peripheral.cpp
 	src/Sensors/Sensor.cpp
-	src/Sensors/Generic/AnalogInput.cpp
-    src/Sensors/Generic/DiscreteAnalog.cpp
-	src/Sensors/Generic/DIO/DigitalInputOutput.cpp
-	src/Sensors/Generic/DIO/4DI4DO.cpp
-	src/Sensors/Murata/SCL3X00.cpp
-	src/Sensors/Murata/SCL3300.cpp
-	src/Sensors/Murata/SCL3300a.cpp
-	src/Sensors/Murata/SCL3400.cpp
-	src/Sensors/Honeywell/ABP.cpp
-	src/Sensors/Generic/hx711.cpp
-    src/Sensors/Generic/DIO/Encoder.cpp
-    src/Sensors/Generic/DIO/Cutter.cpp
-    src/Sensors/Generic/ds18b20/ds18b20.cpp
-    src/Sensors/Generic/Enviro/LightSound.cpp
+
+	${DEVICE_SOURCES}  # this is automatically generated in cmake/device-config.cmake
 
 	src/main.cpp
 )
