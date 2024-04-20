@@ -14,7 +14,7 @@
 #include "Hardware/ClockUtils.hpp"
 #include "Hardware/InitUtils.hpp"
 #include "Hardware/Sleep.hpp"
-#include "Sensors/all.hpp"
+#include "Sensors/SensorHeader.hpp"
 #include "Communication/RS485.hpp"
 #include "Utils/Log.h"
 
