@@ -46,7 +46,8 @@ volatile bool awake = true;
 void core1Entry();
 
 int main(void)
-{ // enable watchdog for 200ms, pause on debug = true
+{
+    // enable watchdog for 200ms, pause on debug = true
     watchdog_enable(DEFAULT_WATCHDOG_DELAY, true);
 
     // init system
@@ -83,6 +84,7 @@ int main(void)
         {
             watchdog_update();
         }
+        xlog_info("USB Connected");
     }
 
     watchdog_update();
@@ -102,12 +104,9 @@ int main(void)
         _reg.errorSet(ERROR_MASK_DEVICE_INIT);
     }
     watchdog_update();
-    device.update();
-    watchdog_update();
 
     if (useUsb)
     {
-        xlog_info("USB Connected");
 
         cout << device.getInfoJson() << endl;
 
@@ -115,11 +114,9 @@ int main(void)
         _reg.config->bits.freeRun = 1;
         _reg.config->bits.calcStat = 1;
     }
-    else
-    {
-        // init uart over RS485
-        userInitUart();
-    }
+
+    // init uart over RS485
+    userInitUart();
 
     // bind callbacks, ~204us
     xs.bind(MSGID_PING, unicast(pingCallback));
@@ -146,81 +143,52 @@ int main(void)
         // update watchdog
         watchdog_update();
 
-        if (useUsb)
+        // running on RS485, sync for incoming messages from master, timeout
+        // = 5ms
+        xlog_debug("Syncing xerxes network");
+        xs.sync(5000);
+
+        // send char if tx queue is not empty and uart is writable
+        if (!queue_is_empty(&txFifo))
         {
-            xlog_info("Using USB uart");
-            constexpr uint32_t printFrequencyHz = 1;
-            constexpr uint64_t printIntervalUs = 1e6 / printFrequencyHz;
+            xlog_dbg("got some data to process");
+            uint txLen = queue_get_level(&txFifo);
+            assert(txLen <= RX_TX_QUEUE_SIZE);
 
-            // cout timestamp and net cycle time in json format
-            auto timestamp = time_us_64();
-            cout << "{" << endl;
-            cout << "\"timestamp\":" << timestamp << "," << endl;
-            cout << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
-            cout << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
+            uint8_t toSend[txLen];
 
-            // cout device values in json format
-            cout << "\"device\":" << device.getJson() << endl;
-            cout << "}" << endl
-                 << endl;
-
-            auto end = time_us_64();
-            // calculate remaining sleep time in us - 10us for calculation overhead
-            auto remainingSleepTime = printIntervalUs - (end - timestamp) - 10;
-
-            // sleep in high speed mode for 1 second, watchdog friendly
-            xlog_dbg("Sleeping for 1s");
-            sleep_hp(remainingSleepTime);
+            // drain queue
+            for (uint i = 0; i < txLen; i++)
+            {
+                queue_remove_blocking(&txFifo, &toSend[i]);
+            }
+            xlog_dbg("Writing data to uart");
+            // write char to bus, this will clear the interrupt
+            uart_write_blocking(uart0, toSend, txLen);
         }
-        else
+
+        if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))
         {
-            // running on RS485, sync for incoming messages from master, timeout
-            // = 5ms
-            xlog_info("Syncing xerxes network");
-            xs.sync(5000);
-
-            // send char if tx queue is not empty and uart is writable
-            if (!queue_is_empty(&txFifo))
-            {
-                xlog_dbg("got some data to process");
-                uint txLen = queue_get_level(&txFifo);
-                assert(txLen <= RX_TX_QUEUE_SIZE);
-
-                uint8_t toSend[txLen];
-
-                // drain queue
-                for (uint i = 0; i < txLen; i++)
-                {
-                    queue_remove_blocking(&txFifo, &toSend[i]);
-                }
-                xlog_dbg("Writing data to uart");
-                // write char to bus, this will clear the interrupt
-                uart_write_blocking(uart0, toSend, txLen);
-            }
-
-            if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))
-            {
-                // rx fifo is full, set the cpu_overload error flag
-                xlog_info("Queue is full");
-                _reg.errorSet(ERROR_MASK_UART_OVERLOAD);
-            }
+            // rx fifo is full, set the cpu_overload error flag
+            xlog_error("Queue is full");
+            _reg.errorSet(ERROR_MASK_UART_OVERLOAD);
+        }
 
 // save power in release mode
 #ifdef NDEBUG
-            if (core1idle)
-            {
-                // setClocksLP();
-                sleep_us(10);
-                // setClocksHP();
-            }
-#endif // NDEBUG
+        if (core1idle)
+        {
+            // setClocksLP();
+            sleep_us(10);
+            // setClocksHP();
         }
+#endif // NDEBUG
     }
 }
 
 void core1Entry()
 {
-    xlog_info("Entering core 1");
+    xlog_dbg("Entering core 1");
     uint64_t endOfCycle = 0;
     uint64_t cycleDuration = 0;
     int64_t sleepFor = 0;
@@ -267,6 +235,19 @@ void core1Entry()
         if (_reg.config->bits.freeRun)
         {
             device.update();
+        }
+
+        { // scope for json output
+            // cout timestamp and net cycle time in json format
+            auto timestamp = time_us_64();
+            cout << "{" << endl;
+            cout << "\"timestamp\":" << timestamp << "," << endl;
+            cout << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
+            cout << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
+
+            // cout device values in json format
+            cout << "\"device\":" << device.getJson() << endl;
+            cout << "}" << endl;
         }
 
         // calculate how long it took to finish cycle
