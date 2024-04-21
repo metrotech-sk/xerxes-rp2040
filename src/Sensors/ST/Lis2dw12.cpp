@@ -2,6 +2,8 @@
 #include "Utils/Log.h"
 #include <iostream>
 #include <sstream>
+#include "Utils/Various.hpp"
+#include "Utils/FFT.hpp"
 
 namespace Xerxes
 {
@@ -26,6 +28,7 @@ namespace Xerxes
         xlog_info("LIS2 init");
         _devid = DEVID_PRESSURE_60MBAR;
         _label = "LIS2DW12 Accelerometer";
+        *_reg->desiredCycleTimeUs = 10000; // 100Hz
 
         // init spi with freq 8MHz, return actual frequency
         constexpr uint desired_freq = 8'000'000;
@@ -50,7 +53,7 @@ namespace Xerxes
         }
 
         // set CTRL1 register
-        writeRegister(REG::CTRL1, CTRL1::val(CTRL1::ODR::ODR_25HZ, CTRL1::MODE::HIGH_PERF, CTRL1::LP_MODE::LP_MODE1));
+        writeRegister(REG::CTRL1, CTRL1::val(CTRL1::ODR::ODR_100HZ, CTRL1::MODE::HIGH_PERF, CTRL1::LP_MODE::LP_MODE1));
         uint8_t ctrl1 = readRegister(REG::CTRL1);
         xlog_debug("LIS2 CTRL1: " << (int)ctrl1);
 
@@ -71,29 +74,76 @@ namespace Xerxes
 
     void LIS2::update()
     {
-        while (!dataReady())
+        constexpr size_t N_SAMPLES = 2048;
+        constexpr uint16_t FREQ = 100;
+
+        // std::vector<cf> *pxv = new std::vector<cf>(N_SAMPLES);
+        // std::vector<cf> *pyv = new std::vector<cf>(N_SAMPLES);
+        // std::vector<cf> *pzv = new std::vector<cf>(N_SAMPLES);
+        std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
+
+        auto time_start = time_us_64();
+
+        for (size_t i = 0; i < N_SAMPLES; i++)
         {
-            sleep_us(1);
+            while (!dataReady())
+            {
+                sleep_us(1);
+            }
+            uint8_t x_l = readRegister(REG::OUT_X_L);
+            uint8_t x_h = readRegister(REG::OUT_X_H);
+            uint8_t y_l = readRegister(REG::OUT_Y_L);
+            uint8_t y_h = readRegister(REG::OUT_Y_H);
+            uint8_t z_l = readRegister(REG::OUT_Z_L);
+            uint8_t z_h = readRegister(REG::OUT_Z_H);
+
+            int16_t xi = (int16_t)(x_h << 8 | x_l);
+            int16_t yi = (int16_t)(y_h << 8 | y_l);
+            int16_t zi = (int16_t)(z_h << 8 | z_l);
+
+            float xf, yf, zf, tf;
+            xf = (float)xi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
+            yf = (float)yi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
+            zf = (float)zi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
+
+            double tot = sqrt(xf * xf + yf * yf + zf * zf);
+
+            ptot->at(i) = cf(tot, 0);
+
+            // pxv->at(i) = cf(xf, 0);
+            // pyv->at(i) = cf(yf, 0);
+            // pzv->at(i) = cf(zf, 0);
+
+            watchdog_update();
         }
-        uint8_t x_l = readRegister(REG::OUT_X_L);
-        uint8_t x_h = readRegister(REG::OUT_X_H);
-        uint8_t y_l = readRegister(REG::OUT_Y_L);
-        uint8_t y_h = readRegister(REG::OUT_Y_H);
-        uint8_t z_l = readRegister(REG::OUT_Z_L);
-        uint8_t z_h = readRegister(REG::OUT_Z_H);
+
+        auto time_end = time_us_64();
+        xlog_info("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
+        xlog_info("Used heap: " << std::getUsedHeap() / 1024 << "kiB");
+
+        fft(ptot);
+        xlog_info("FFT done");
+
         uint8_t t_l = readRegister(REG::OUT_T_L);
         uint8_t t_h = readRegister(REG::OUT_T_H);
-        int16_t x = (int16_t)(x_h << 8 | x_l);
-        int16_t y = (int16_t)(y_h << 8 | y_l);
-        int16_t z = (int16_t)(z_h << 8 | z_l);
-        int16_t t = (int16_t)(t_h << 4 | t_l >> 4);
-        *_reg->pv0 = (float)x * 2 / (1 << 15);
-        *_reg->pv1 = (float)y * 2 / (1 << 15);
-        *_reg->pv2 = (float)z * 2 / (1 << 15);
-        *_reg->pv3 = ((float)t / 16.0) + 25;
-        std::cout << "[" << time_us_64() << "] x: " << *_reg->pv0 << ", y: " << *_reg->pv1 << ", z: " << *_reg->pv2 << ", t: " << *_reg->pv3 << std::endl;
-        float len = sqrtf(*_reg->pv0 * *_reg->pv0 + *_reg->pv1 * *_reg->pv1 + *_reg->pv2 * *_reg->pv2);
-        std::cout << "len: " << len << std::endl;
+        int16_t ti = (int16_t)(t_h << 4 | t_l >> 4);
+
+        // convert to float and update
+        /*
+        tf = ((float)t / 16.0) + 25;   // unit is °C, resolution 16 LSB/°C = 0.0625°C
+
+        *_reg->pv0 = xf;
+        *_reg->pv1 = yf;
+        *_reg->pv2 = zf;
+        *_reg->pv3 = tf;
+        */
+
+        print_fft(ptot, FREQ);
+
+        // delete pxv;
+        // delete pyv;
+        // delete pzv;
+        delete ptot;
 
         // super::update();
     }
@@ -101,12 +151,12 @@ namespace Xerxes
     std::string LIS2::getJson()
     {
         std::stringstream ss;
-        ss << "{";
-        ss << "\"x\":" << *_reg->pv0 << ",";
-        ss << "\"y\":" << *_reg->pv1 << ",";
-        ss << "\"z\":" << *_reg->pv2 << ",";
-        ss << "\"t\":" << *_reg->pv3;
-        ss << "}" << std::endl;
+        ss << "{\n";
+        ss << "  \"x\":" << *_reg->pv0 << ",\n";
+        ss << "  \"y\":" << *_reg->pv1 << ",\n";
+        ss << "  \"z\":" << *_reg->pv2 << ",\n";
+        ss << "  \"t\":" << *_reg->pv3 << "\n";
+        ss << "  }" << std::endl;
         return ss.str();
     }
 
