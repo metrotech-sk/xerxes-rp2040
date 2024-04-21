@@ -1,25 +1,24 @@
 {
-// These settings tweaks to the cmake plugin will ensure
-// that you debug using cortex-debug instead of trying to launch
-// a Pico binary on the host
-"cmake.statusbar.advanced": {
-    "debug": {
-        "visibility": "hidden"
+    // These settings tweaks to the cmake plugin will ensure
+    // that you debug using cortex-debug instead of trying to launch
+    // a Pico binary on the host
+    "cmake.statusbar.advanced": {
+        "debug": {
+            "visibility": "hidden"
+        },
+        "launch": {
+            "visibility": "hidden"
+        },
+        "build": {
+            "visibility": "default"
+        },
+        "buildTarget": {
+            "visibility": "hidden"
+        }
     },
-    "launch": {
-        "visibility": "hidden"
-    },
-    "build": {
-        "visibility": "default"
-    },
-    "buildTarget": {
-        "visibility": "hidden"
-    }
-},
-"cmake.buildBeforeRun": true,
-"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
-"cortex-debug.openocdPath": "/usr/local/bin/openocd",
-
+    "cmake.buildBeforeRun": true,
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "cortex-debug.openocdPath": "/usr/local/bin/openocd",
     "C_Cpp.errorSquiggles": "disabled",
     "files.exclude": {
         "**/.git": true,
@@ -32,8 +31,8 @@
         ".history": true
     },
     "explorerExclude.backup": {},
-    
     "files.associations": {
+        "*.j2": "jinja-html",
         "iostream": "cpp",
         "*.tcc": "cpp",
         "cctype": "cpp",
@@ -87,7 +86,35 @@
         "random": "cpp",
         "ratio": "cpp",
         "sstream": "cpp",
-        "cinttypes": "cpp"
+        "cinttypes": "cpp",
+        "any": "cpp",
+        "cfenv": "cpp",
+        "charconv": "cpp",
+        "codecvt": "cpp",
+        "condition_variable": "cpp",
+        "coroutine": "cpp",
+        "csetjmp": "cpp",
+        "csignal": "cpp",
+        "cuchar": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp",
+        "regex": "cpp",
+        "fstream": "cpp",
+        "future": "cpp",
+        "iomanip": "cpp",
+        "mutex": "cpp",
+        "numbers": "cpp",
+        "scoped_allocator": "cpp",
+        "shared_mutex": "cpp",
+        "span": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp",
+        "typeindex": "cpp",
+        "valarray": "cpp",
+        "variant": "cpp",
+        "*.tpp": "cpp"
     },
     "python.testing.pytestArgs": [
         "tests/pytest"
@@ -97,5 +124,5 @@
     "flake8.args": [
         "--max-line-length=120",
         "--ignore=F401,W291,E303,W293,W504,E221",
-     ]
+    ]
 }
