@@ -108,7 +108,7 @@ namespace Xerxes
 
             double tot = sqrt(xf * xf + yf * yf + zf * zf);
 
-            ptot->at(i) = cf(tot, 0);
+            ptot->at(i) = cf(tot - 1, 0); // -1 to remove DC component
 
             // pxv->at(i) = cf(xf, 0);
             // pyv->at(i) = cf(yf, 0);
@@ -124,6 +124,10 @@ namespace Xerxes
         fft(ptot);
         xlog_info("FFT done");
 
+        print_fft(ptot, FREQ);
+
+        phase_to_freq(ptot, FREQ);
+
         uint8_t t_l = readRegister(REG::OUT_T_L);
         uint8_t t_h = readRegister(REG::OUT_T_H);
         int16_t ti = (int16_t)(t_h << 4 | t_l >> 4);
@@ -138,7 +142,13 @@ namespace Xerxes
         *_reg->pv3 = tf;
         */
 
-        print_fft(ptot, FREQ);
+        double peak = 0;
+        for (size_t i = 1; i < N_SAMPLES / 2; i++)
+        {
+            peak += sqrt(ptot->at(i).real() * ptot->at(i).real());
+        }
+        peak /= N_SAMPLES / 2;
+        xlog_info("Total vibration: " << peak);
 
         // delete pxv;
         // delete pyv;

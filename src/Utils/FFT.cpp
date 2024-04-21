@@ -67,4 +67,16 @@ namespace Xerxes
         delete a0;
         delete a1;
     }
+
+    void phase_to_freq(std::vector<cf> *a, const uint16_t freq)
+    {
+        const size_t n = a->size();
+        const float bin_size = (float)freq / n; // Hz
+
+        for (size_t i = 0; i < n; i++)
+        {
+            // cout << to_string(i * bin_size) << " " << vec->at(i).real() << endl;
+            a->at(i).imag(i * bin_size);
+        }
+    }
 }

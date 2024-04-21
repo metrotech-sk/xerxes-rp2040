@@ -74,7 +74,8 @@ namespace std
 
         for (size_t i = 0; i < n / 2; i++)
         {
-            cout << to_string(i * bin_size) << " " << vec->at(i).real() << endl;
+            auto ampl = vec->at(i).real();
+            cout << to_string(i * bin_size) << " " << sqrt(ampl * ampl) << endl;
         }
     }
 }
