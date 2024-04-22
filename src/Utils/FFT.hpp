@@ -13,4 +13,6 @@ namespace Xerxes
     void rectify_fft_output(std::vector<cf> *vec);
 
     void truncate_fft_output(std::vector<cf> *vec);
+
+    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours = 0);
 }

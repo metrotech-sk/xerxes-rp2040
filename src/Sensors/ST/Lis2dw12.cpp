@@ -160,16 +160,20 @@ namespace Xerxes
         xlog_info("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
 
 #ifndef NDEBUG // debug only
-        xlog_info("Done, printing");
-        print_fft_output(ptot, FREQ, 32);
+               // xlog_info("Done, printing");
+        // print_fft_output(ptot, FREQ, 32);
 #endif // NDEBUG
+
+        ptot->at(0) = cf(0, 0); // remove DC component
+        float carrier = carrier_freq(ptot, 5);
+        xlog_warn("Carrier frequency: " << carrier << "Hz");
 
         xlog_info("Sorting FFT output");
         sort_fft_output(ptot); // around 40ms per 2048 samples
 
 #ifndef NDEBUG
-        xlog_info("Done, printing");
-        print_fft_output(ptot, FREQ, 32);
+        // xlog_info("Done, printing");
+        // print_fft_output(ptot, FREQ, 32);
 #endif // !NDEBUG
 
         uint8_t t_l = readRegister(REG::OUT_T_L);

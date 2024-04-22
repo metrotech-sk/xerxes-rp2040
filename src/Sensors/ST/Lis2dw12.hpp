@@ -148,8 +148,8 @@ namespace Xerxes
 
         const bool dataReady() const;
 
-        constexpr static size_t N_SAMPLES = 4096;
-        constexpr static uint16_t FREQ = 400;
+        constexpr static size_t N_SAMPLES = 2048;
+        constexpr static uint16_t FREQ = 200;
 
     protected:
         // typedef Sensor as super class for easier access

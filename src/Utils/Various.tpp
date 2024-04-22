@@ -83,9 +83,6 @@ namespace std
     template <typename T>
     void sort_fft_output(vector<complex<T>> *vec)
     {
-        // remove DC component - we dont care about it
-        vec->at(0) = complex<T>(0, 0);
-
         // sort by magnitude which is stored in real part
         sort(vec->begin(), vec->end(), [](const complex<T> &a, const complex<T> &b)
              { return sqrt(a.real() * a.real()) > sqrt(b.real() * b.real()); });

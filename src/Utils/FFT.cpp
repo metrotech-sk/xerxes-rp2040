@@ -56,4 +56,35 @@ namespace Xerxes
         // remove the SECOND half of the vector
         vec->resize(vec->size() / 2);
     }
-}
+
+    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours)
+    {
+        float max = 0;
+        size_t max_i = 0;
+        for (size_t i = 1; i < vec->size(); i++) // skip 0 Hz
+        {
+            if (vec->at(i).real() > max)
+            {
+                max = vec->at(i).real();
+                max_i = i;
+            }
+        }
+
+        if (!n_neighbours)
+        {
+            return vec->at(max_i).imag();
+        }
+        else
+        {
+            float sum = 0;
+            float sum_mag = 0;
+            for (size_t i = max_i - n_neighbours; i <= max_i + n_neighbours; i++)
+            {
+                sum += vec->at(i).imag() * vec->at(i).real();
+                sum_mag += vec->at(i).real();
+            }
+            return sum / sum_mag;
+        }
+    }
+
+} // namespace Xerxes

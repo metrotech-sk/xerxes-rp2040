@@ -111,8 +111,6 @@ add_executable(
 	src/Core/Register.cpp
 	src/Sensors/Peripheral.cpp
 	src/Sensors/Sensor.cpp
-	src/Utils/Various.cpp
-	src/Utils/FFT.cpp
 	src/Utils/Gpio.cpp
 
 	${DEVICE_SOURCES}  # this is automatically generated in cmake/device-config.cmake
