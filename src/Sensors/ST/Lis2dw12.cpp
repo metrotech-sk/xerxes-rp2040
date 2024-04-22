@@ -52,8 +52,36 @@ namespace Xerxes
             throw std::runtime_error("LIS2 init failed");
         }
 
+        CTRL1::ODR ODR;
+        switch (FREQ)
+        {
+        case 100:
+            ODR = CTRL1::ODR::ODR_100HZ;
+            break;
+
+        case 200:
+            ODR = CTRL1::ODR::ODR_200HZ;
+            break;
+
+        case 400:
+            ODR = CTRL1::ODR::ODR_400_200HZ;
+            break;
+
+        case 800:
+            ODR = CTRL1::ODR::ODR_800_200HZ;
+            break;
+
+        case 1600:
+            ODR = CTRL1::ODR::ODR_1600_200HZ;
+            break;
+
+        default:
+            throw std::runtime_error("Invalid frequency");
+            break;
+        }
+
         // set CTRL1 register
-        writeRegister(REG::CTRL1, CTRL1::val(CTRL1::ODR::ODR_100HZ, CTRL1::MODE::HIGH_PERF, CTRL1::LP_MODE::LP_MODE1));
+        writeRegister(REG::CTRL1, CTRL1::val(ODR, CTRL1::MODE::HIGH_PERF, CTRL1::LP_MODE::LP_MODE1));
         uint8_t ctrl1 = readRegister(REG::CTRL1);
         xlog_debug("LIS2 CTRL1: " << (int)ctrl1);
 
@@ -64,6 +92,13 @@ namespace Xerxes
         Status_t status;
         status.reg = readRegister(REG::STATUS);
         xlog_debug("LIS2 STATUS: " << (int)status.reg);
+
+        // clear message buffer
+        float *data = (float *)(_reg->message);
+        for (size_t i = 0; i < 64; i++)
+        {
+            data[i] = 0;
+        }
     }
 
     void LIS2::stop()
@@ -74,12 +109,6 @@ namespace Xerxes
 
     void LIS2::update()
     {
-        constexpr size_t N_SAMPLES = 2048;
-        constexpr uint16_t FREQ = 100;
-
-        // std::vector<cf> *pxv = new std::vector<cf>(N_SAMPLES);
-        // std::vector<cf> *pyv = new std::vector<cf>(N_SAMPLES);
-        // std::vector<cf> *pzv = new std::vector<cf>(N_SAMPLES);
         std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
 
         auto time_start = time_us_64();
@@ -101,18 +130,14 @@ namespace Xerxes
             int16_t yi = (int16_t)(y_h << 8 | y_l);
             int16_t zi = (int16_t)(z_h << 8 | z_l);
 
-            float xf, yf, zf, tf;
+            float xf, yf, zf;
             xf = (float)xi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
             yf = (float)yi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
             zf = (float)zi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
 
-            double tot = sqrt(xf * xf + yf * yf + zf * zf);
+            float tot = sqrt(xf * xf + yf * yf + zf * zf);
 
             ptot->at(i) = cf(tot - 1, 0); // -1 to remove DC component
-
-            // pxv->at(i) = cf(xf, 0);
-            // pyv->at(i) = cf(yf, 0);
-            // pzv->at(i) = cf(zf, 0);
 
             watchdog_update();
         }
@@ -121,38 +146,67 @@ namespace Xerxes
         xlog_info("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
         xlog_info("Used heap: " << std::getUsedHeap() / 1024 << "kiB");
 
-        fft(ptot);
-        xlog_info("FFT done");
+        auto stddev = stddev_signal(ptot);
+        xlog_info("Stddev: " << stddev);
 
-        print_fft(ptot, FREQ);
+        fft(ptot); // around 300ms per 2048 samples
 
+        xlog_info("FFT done, swaping phase for frequency bins.");
         phase_to_freq(ptot, FREQ);
+        rectify_fft_output(ptot);
+
+        xlog_info("Removing second half of the spectrum - it is a mirror image of the first half");
+        truncate_fft_output(ptot);
+        xlog_info("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
+
+#ifndef NDEBUG // debug only
+        xlog_info("Done, printing");
+        print_fft_output(ptot, FREQ, 32);
+#endif // NDEBUG
+
+        xlog_info("Sorting FFT output");
+        sort_fft_output(ptot); // around 40ms per 2048 samples
+
+#ifndef NDEBUG
+        xlog_info("Done, printing");
+        print_fft_output(ptot, FREQ, 32);
+#endif // !NDEBUG
 
         uint8_t t_l = readRegister(REG::OUT_T_L);
         uint8_t t_h = readRegister(REG::OUT_T_H);
         int16_t ti = (int16_t)(t_h << 4 | t_l >> 4);
+        auto tf = ((float)ti / 16.0) + 25; // unit is °C, resolution 16 LSB/°C = 0.0625°C
+        xlog_info("Temperature: " << tf);
 
-        // convert to float and update
-        /*
-        tf = ((float)t / 16.0) + 25;   // unit is °C, resolution 16 LSB/°C = 0.0625°C
+        // store sorted FFT output in message buffer
+        float *data = (float *)(_reg->message);
 
-        *_reg->pv0 = xf;
-        *_reg->pv1 = yf;
-        *_reg->pv2 = zf;
-        *_reg->pv3 = tf;
-        */
-
-        double peak = 0;
-        for (size_t i = 1; i < N_SAMPLES / 2; i++)
+        for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
         {
-            peak += sqrt(ptot->at(i).real() * ptot->at(i).real());
+            data[i] = ptot->at(i / 2).imag();     // frequency
+            data[i + 1] = ptot->at(i / 2).real(); // magnitude
         }
-        peak /= N_SAMPLES / 2;
-        xlog_info("Total vibration: " << peak);
+        xlog_info("Data stored in message buffer");
 
-        // delete pxv;
-        // delete pyv;
-        // delete pzv;
+#ifndef NDEBUG
+        // print data to console for debugging
+        for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
+        {
+            std::cout << data[i] << ", " << data[i + 1] << std::endl;
+        }
+#endif // NDEBUG
+
+        // store top 4 frequencies in pv/av registers
+        *_reg->pv0 = ptot->at(0).imag(); // frequency
+        *_reg->pv1 = ptot->at(1).imag(); // frequency
+        *_reg->pv2 = ptot->at(2).imag(); // frequency
+        *_reg->pv3 = ptot->at(3).imag(); // frequency
+
+        *_reg->av0 = ptot->at(0).real(); // magnitude
+        *_reg->av1 = ptot->at(1).real(); // magnitude
+        *_reg->av2 = ptot->at(2).real(); // magnitude
+        *_reg->av3 = ptot->at(3).real(); // magnitude
+
         delete ptot;
 
         // super::update();
@@ -162,10 +216,14 @@ namespace Xerxes
     {
         std::stringstream ss;
         ss << "{\n";
-        ss << "  \"x\":" << *_reg->pv0 << ",\n";
-        ss << "  \"y\":" << *_reg->pv1 << ",\n";
-        ss << "  \"z\":" << *_reg->pv2 << ",\n";
-        ss << "  \"t\":" << *_reg->pv3 << "\n";
+        ss << "  \"f0\":" << *_reg->pv0 << ",\n";
+        ss << "  \"f1\":" << *_reg->pv1 << ",\n";
+        ss << "  \"f2\":" << *_reg->pv2 << ",\n";
+        ss << "  \"f3\":" << *_reg->pv3 << ",\n";
+        ss << "  \"m0\":" << *_reg->av0 << ",\n";
+        ss << "  \"m1\":" << *_reg->av1 << ",\n";
+        ss << "  \"m2\":" << *_reg->av2 << ",\n";
+        ss << "  \"m3\":" << *_reg->av3 << "\n";
         ss << "  }" << std::endl;
         return ss.str();
     }
