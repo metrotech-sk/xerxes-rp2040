@@ -10,6 +10,12 @@ namespace Xerxes
 
     /// @brief Turn off the busy LED
     void ledBusyOff();
+
+    /// @brief Turn on the communication LED
+    void ledComOn();
+
+    /// @brief Turn off the communication LED
+    void ledComOff();
 } // namespace Xerxes
 
 #endif // __GPIO_HPP

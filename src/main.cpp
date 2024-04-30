@@ -17,6 +17,7 @@
 #include "Sensors/SensorHeader.hpp"
 #include "Communication/RS485.hpp"
 #include "Utils/Log.h"
+#include "Utils/Gpio.hpp"
 
 using namespace std;
 using namespace Xerxes;
@@ -80,11 +81,15 @@ int main(void)
         // init usb uart
         userInitUartDisabled();
 
-        while (!stdio_usb_connected())
+        while (!stdio_usb_connected()) // wait for usb connection
         {
             watchdog_update();
         }
         xlog_info("USB Connected");
+    }
+    else
+    {
+        stdio_usb_init();
     }
 
     watchdog_update();
@@ -151,13 +156,13 @@ int main(void)
         // send char if tx queue is not empty and uart is writable
         if (!queue_is_empty(&txFifo))
         {
+            ledComOn(); // set communication activity led
             xlog_trace("got some data to process");
             uint txLen = queue_get_level(&txFifo);
             assert(txLen <= RX_TX_QUEUE_SIZE);
 
             uint8_t toSend[txLen];
 
-            gpio_put(LED_COM_ACT_PIN, 1); // set communication activity led
             // drain queue
             for (uint i = 0; i < txLen; i++)
             {
@@ -166,7 +171,7 @@ int main(void)
             xlog_trace("Writing data to uart");
             // write char to bus, this will clear the interrupt
             uart_write_blocking(uart0, toSend, txLen);
-            gpio_put(LED_COM_ACT_PIN, 0); // clear activity led
+            ledComOff(); // clear communication activity led
         }
 
         if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))
@@ -242,14 +247,16 @@ void core1Entry()
         { // scope for json output
             // cout timestamp and net cycle time in json format
             auto timestamp = time_us_64();
-            cout << "{" << endl;
-            cout << "\"timestamp\":" << timestamp << "," << endl;
-            cout << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
-            cout << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
+            stringstream ss;
+            ss << "{" << endl;
+            ss << "\"timestamp\":" << timestamp << "," << endl;
+            ss << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
+            ss << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
 
-            // cout device values in json format
-            cout << "\"device\":" << device.getJson() << endl;
-            cout << "}" << endl;
+            // ss device values in json format
+            ss << "\"device\":" << device.getJson() << endl;
+            ss << "}" << endl;
+            printf("%s\n", ss.str().c_str());
         }
 
         // calculate how long it took to finish cycle

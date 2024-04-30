@@ -26,7 +26,12 @@ namespace Xerxes
         if (bindings.contains(msg.msgId))
         {
             // call a function bound to messageId
+            xlog_dbg("Calling function for message, msgid: " << std::hex << msg.msgId << std::dec);
             bindings[msg.msgId](msg);
+        }
+        else
+        {
+            xlog_debug("No function bound to msgid: " << std::hex << msg.msgId << std::dec);
         }
     }
 
@@ -55,7 +60,6 @@ namespace Xerxes
         }
 
         // call appropriate function
-        xlog_dbg("Calling function for message, msgid: " << std::hex << incoming.msgId << std::dec);
         call(incoming);
         return true;
     }

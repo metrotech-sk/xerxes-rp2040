@@ -45,7 +45,7 @@
         std::stringstream ss;                                                                                                                                                                       \
         double timestamp = time_us_64() / 1000000.0f;                                                                                                                                               \
         ss << _CLR_GREY << "[" << timestamp << "][" << _CLR_RST << level << _CLR_GREY << "] — [" << __FILENAME__ << ":" << __LINE__ << " " << __func__ << "()] — " << _CLR_RST << msg << std::endl; \
-        printf(ss.str().c_str());                                                                                                                                                                   \
+        printf(ss.str().c_str()); /* printf is threadsafe, std::cout is not ! */                                                                                                                    \
     } while (0)
 #endif // NDEBUG
 

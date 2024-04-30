@@ -42,9 +42,7 @@ namespace Xerxes
 
         if (receivePacket(timeoutUs))
         {
-            ledBusyOn();
             packet = Packet(incomingMessage);
-            ledBusyOff();
 
             return true;
         }

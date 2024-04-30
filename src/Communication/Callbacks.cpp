@@ -11,6 +11,7 @@
 #include "Core/Register.hpp"
 #include "Sensors/SensorHeader.hpp"
 #include "Version.h"
+#include "Utils/Log.h"
 
 extern Xerxes::Slave xs;
 extern Xerxes::Register _reg;
@@ -21,6 +22,7 @@ namespace Xerxes
 
     void pingCallback(const Xerxes::Message &msg)
     {
+        xlog_debug("Ping received, sending reply");
         uint8_t _devid = device.getDevid();
         std::vector<uint8_t> payload{_devid, PROTOCOL_VERSION_MAJ, PROTOCOL_VERSION_MIN};
         xs.send(msg.srcAddr, MSGID_PING_REPLY, payload);
@@ -28,6 +30,7 @@ namespace Xerxes
 
     void syncCallback(const Xerxes::Message &msg)
     {
+        xlog_debug("Sync received, updating device");
         device.update();
     }
 
@@ -43,6 +46,7 @@ namespace Xerxes
         if (offset >= READ_ONLY_OFFSET || offset < 0)
         {
             // send ACK_NOK
+            xlog_warn("Invalid register offset");
             xs.send(msg.srcAddr, MSGID_ACK_NOK);
             return;
         }
@@ -51,6 +55,7 @@ namespace Xerxes
         if (!multicore_lockout_start_timeout_us(10'000))
         {
             // lockout failed, send ACK_NOK
+            xlog_warn("Core1 lockout failed");
             xs.send(msg.srcAddr, MSGID_ACK_NOK);
             return;
         }
@@ -74,6 +79,7 @@ namespace Xerxes
         // if memory written is in non-volatile range, update flash
         if (offset < VOLATILE_OFFSET)
         {
+            xlog_debug("Writing data to flash");
             // update flash, takes ~50ms to complete hence the 2 watchdog updates
             watchdog_update();
             updateFlash((uint8_t *)_reg.memTable);
@@ -81,6 +87,7 @@ namespace Xerxes
         }
 
         // send ACK_OK
+        xlog_debug("Register write successful, sending ACK_OK");
         xs.send(msg.srcAddr, MSGID_ACK_OK);
     }
 
@@ -141,6 +148,7 @@ namespace Xerxes
         // check if memory is unlocked (factory reset is allowed only if memory is unlocked)
         if (*_reg.memUnlocked == MEM_UNLOCKED_VAL)
         {
+            xlog_info("Factory reset requested, resetting device");
             // reset memory
             userLoadDefaultValues();
             // reset device
@@ -149,6 +157,7 @@ namespace Xerxes
         else
         {
             // send ACK_NOK
+            xlog_warn("Factory reset requested but memory is locked");
             xs.send(msg.srcAddr, MSGID_ACK_NOK);
             return;
         }
@@ -156,6 +165,7 @@ namespace Xerxes
 
     void getSensorInfoCallback(const Xerxes::Message &msg)
     {
+        xlog_debug("Get sensor info requested, sending info");
         std::string info = device.getInfoJson();
         std::vector<uint8_t> payload(info.begin(), info.end());
         xs.send(msg.srcAddr, MSGID_INFO, payload);
