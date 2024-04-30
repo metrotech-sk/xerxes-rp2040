@@ -1,10 +1,4 @@
-from xerxes_protocol import (
-    MemoryVolatile,
-    Leaf,
-    XerxesRoot,
-    Addr,
-    MsgId
-)
+from xerxes_protocol import MemoryVolatile, Leaf, XerxesRoot, Addr, MsgId
 
 import time
 import struct
@@ -19,9 +13,9 @@ def test_reset_soft(leaf: Leaf):
     leaf.reset_soft()
     with pytest.raises(TimeoutError):
         leaf.ping(1)
-    
+
     # wait for the leaf to reboot
-    time.sleep(.5)
+    time.sleep(0.5)
 
     # check if leaf is still connected to the network
     assert leaf.root.isPingLatest(leaf.ping())
@@ -33,10 +27,10 @@ def test_reset_hard(cleanLeaf: Leaf):
 
     # check that the gain is set correctly
     assert cleanLeaf.gain_pv2 == pytest.approx(3.14, abs=1e-6)
-    
+
     cleanLeaf.reset_hard()
     # wait for the cleanLeaf to reboot
-    time.sleep(.5)
+    time.sleep(0.5)
 
     # check if cleanLeaf is still connected to the network
     assert cleanLeaf.root.isPingLatest(cleanLeaf.ping())
@@ -58,14 +52,13 @@ def test_hard_reset_fail(cleanLeaf: Leaf, XR: XerxesRoot):
 
     # confirm that the magic bytes are wrong
     assert cleanLeaf.read_reg_net(mem_lock_offset, 4) == invalid_magic_bytes
-    
+
     # send a message to the leaf, which should still be alive
     reply = cleanLeaf.exchange(bytes(MsgId.RESET_HARD))
     assert reply is not None
 
     # reset should fail because of wrong magic bytes, so the reply should be NOK
     assert reply.message_id == MsgId.ACK_NOK
-
 
     # send a ping to the leaf, which should still be alive
     assert XR.isPingLatest(cleanLeaf.ping())

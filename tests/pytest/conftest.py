@@ -1,4 +1,3 @@
-
 import pytest
 from serial import Serial, SerialException
 import os
@@ -10,9 +9,10 @@ from xerxes_protocol import (
     Addr,
     DebugSerial,
     MessageIncomplete,
-    ChecksumError
+    ChecksumError,
 )
 import logging
+
 _log = logging.getLogger(__name__)
 
 
@@ -83,7 +83,7 @@ def leaf(XR: XerxesRoot) -> Leaf:
     _l_ping = leaf.ping()
     _log.debug(f"Leaf ping: {_l_ping}")
     leaf.root.isPingLatest(pingPacket=_l_ping)
-    
+
     return leaf
 
 
@@ -102,12 +102,12 @@ def cleanLeaf(XR: XerxesRoot) -> Leaf:
     # check if leaf is connected to the network first
     assert leaf.root.isPingLatest(leaf.ping())
 
-    # clean the leaf - reset it to factory default state    
+    # clean the leaf - reset it to factory default state
 
     leaf.reset_hard()
-    
+
     # wait for the leaf to reboot
-    time.sleep(.5)
+    time.sleep(0.3)
 
     # send a ping to the leaf
     _l_ping = leaf.ping()
@@ -116,12 +116,13 @@ def cleanLeaf(XR: XerxesRoot) -> Leaf:
 
     return leaf
 
+
 @pytest.fixture
 def findLeaf(XR: XerxesRoot) -> Leaf:
     """Prepare Xerxes leaf to test with.
     Args:
         XR (XerxesRoot): Xerxes root to test with.
-        
+
     Returns:
         Leaf: Xerxes leaf to test with.
     """
@@ -136,9 +137,9 @@ def findLeaf(XR: XerxesRoot) -> Leaf:
             continue
         except ChecksumError:
             continue
-    
+
     _log.info(f"Found leaf at address {i}")
-        # check if leaf is connected to the network first
+    # check if leaf is connected to the network first
     assert leaf.root.isPingLatest(pingReply)
 
     return leaf
