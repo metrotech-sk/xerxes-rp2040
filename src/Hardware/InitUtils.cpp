@@ -27,7 +27,7 @@ void userInitQueue()
 
 void uart_interrupt_handler()
 {
-    gpio_put(USR_LED_PIN, 1);
+    gpio_put(LED_COM_ACT_PIN, 1);
 
     if (uart_is_readable(uart0))
     {
@@ -41,7 +41,7 @@ void uart_interrupt_handler()
         }
     }
 
-    gpio_put(USR_LED_PIN, 0);
+    gpio_put(LED_COM_ACT_PIN, 0);
     irq_clear(UART0_IRQ);
 }
 
@@ -78,6 +78,7 @@ void userInitGpio()
 {
     // initialize the user led and button pins
     gpio_init(USR_SW_PIN);
+    gpio_init(LED_COM_ACT_PIN);
     gpio_init(USR_LED_PIN);
     gpio_init(USR_BTN_PIN);
 
@@ -85,6 +86,7 @@ void userInitGpio()
 
     gpio_set_dir(USR_SW_PIN, GPIO_IN);
     gpio_set_dir(USR_LED_PIN, GPIO_OUT);
+    gpio_set_dir(LED_COM_ACT_PIN, GPIO_OUT);
     gpio_set_dir(USR_BTN_PIN, GPIO_IN);
 
     gpio_pull_up(USR_SW_PIN);

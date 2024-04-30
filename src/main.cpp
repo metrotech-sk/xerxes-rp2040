@@ -145,26 +145,28 @@ int main(void)
 
         // running on RS485, sync for incoming messages from master, timeout
         // = 5ms
-        xlog_debug("Syncing xerxes network");
+        xlog_trace("Syncing xerxes network");
         xs.sync(5000);
 
         // send char if tx queue is not empty and uart is writable
         if (!queue_is_empty(&txFifo))
         {
-            xlog_dbg("got some data to process");
+            xlog_trace("got some data to process");
             uint txLen = queue_get_level(&txFifo);
             assert(txLen <= RX_TX_QUEUE_SIZE);
 
             uint8_t toSend[txLen];
 
+            gpio_put(LED_COM_ACT_PIN, 1); // set communication activity led
             // drain queue
             for (uint i = 0; i < txLen; i++)
             {
                 queue_remove_blocking(&txFifo, &toSend[i]);
             }
-            xlog_dbg("Writing data to uart");
+            xlog_trace("Writing data to uart");
             // write char to bus, this will clear the interrupt
             uart_write_blocking(uart0, toSend, txLen);
+            gpio_put(LED_COM_ACT_PIN, 0); // clear activity led
         }
 
         if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))

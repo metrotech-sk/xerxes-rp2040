@@ -50,7 +50,7 @@ namespace Xerxes
         if (!xp->readMessage(incoming, timeoutUs))
         {
             // if no message is in buffer
-            xlog_dbg("No message in buffer");
+            xlog_trace("No message in buffer");
             return false;
         }
 

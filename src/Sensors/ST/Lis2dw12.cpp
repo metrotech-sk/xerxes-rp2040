@@ -33,7 +33,7 @@ namespace Xerxes
         // init spi with freq 8MHz, return actual frequency
         constexpr uint desired_freq = 8'000'000;
         uint actual_freq = spi_init(spi0, desired_freq);
-        xlog_info("LIS2 spi init, actual_freq: " << actual_freq);
+        xlog_debug("LIS2 spi init, actual_freq: " << actual_freq);
 
         // Set the GPIO pin mux to the SPI
         gpio_set_function(SPI0_MISO_PIN, GPIO_FUNC_SPI);
@@ -119,6 +119,7 @@ namespace Xerxes
             {
                 sleep_us(1);
             }
+            gpio_put(USR_LED_PIN, 1); // turn on CPU LED to signal data ready
             uint8_t x_l = readRegister(REG::OUT_X_L);
             uint8_t x_h = readRegister(REG::OUT_X_H);
             uint8_t y_l = readRegister(REG::OUT_Y_L);
@@ -139,36 +140,38 @@ namespace Xerxes
 
             ptot->at(i) = cf(tot - 1, 0); // -1 to remove DC component
 
+            gpio_put(USR_LED_PIN, 0);
+
             watchdog_update();
         }
 
         auto time_end = time_us_64();
-        xlog_info("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
-        xlog_info("Used heap: " << std::getUsedHeap() / 1024 << "kiB");
+        xlog_debug("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
+        xlog_debug("Used heap: " << std::getUsedHeap() / 1024 << "kiB");
 
         auto stddev = stddev_signal(ptot);
-        xlog_info("Stddev: " << stddev);
+        xlog_debug("Stddev: " << stddev);
 
         fft(ptot); // around 300ms per 2048 samples
 
-        xlog_info("FFT done, swaping phase for frequency bins.");
+        xlog_debug("FFT done, swaping phase for frequency bins.");
         phase_to_freq(ptot, FREQ);
         rectify_fft_output(ptot);
 
-        xlog_info("Removing second half of the spectrum - it is a mirror image of the first half");
+        xlog_debug("Removing second half of the spectrum - it is a mirror image of the first half");
         truncate_fft_output(ptot);
-        xlog_info("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
+        xlog_debug("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
 
 #ifndef NDEBUG // debug only
                // xlog_info("Done, printing");
-        // print_fft_output(ptot, FREQ, 32);
-#endif // NDEBUG
+               // print_fft_output(ptot, FREQ, 32);
+#endif         // NDEBUG
 
         ptot->at(0) = cf(0, 0); // remove DC component
         float carrier = carrier_freq(ptot, 5);
-        xlog_warn("Carrier frequency: " << carrier << "Hz");
+        xlog_info("Carrier frequency: " << carrier << "Hz");
 
-        xlog_info("Sorting FFT output");
+        xlog_debug("Sorting FFT output");
         sort_fft_output(ptot); // around 40ms per 2048 samples
 
 #ifndef NDEBUG
@@ -190,7 +193,7 @@ namespace Xerxes
             data[i] = ptot->at(i / 2).imag();     // frequency
             data[i + 1] = ptot->at(i / 2).real(); // magnitude
         }
-        xlog_info("Data stored in message buffer");
+        xlog_debug("Data stored in message buffer");
 
 #ifndef NDEBUG
         // print data to console for debugging
@@ -254,7 +257,7 @@ namespace Xerxes
         {
             xlog_error("LIS2 readRegister failed");
         }
-        xlog_debug("LIS2 readRegister: 0x" << std::hex << (int)reg << ", val: " << (int)data << std::dec);
+        xlog_trace("LIS2 readRegister: 0x" << std::hex << (int)reg << ", val: " << (int)data << std::dec);
 
         return data;
     }
@@ -277,7 +280,7 @@ namespace Xerxes
             return false;
         }
 
-        xlog_debug("LIS2 writeRegister: 0x" << std::hex << (int)reg << ", val: " << (int)val << std::dec);
+        xlog_trace("LIS2 writeRegister: 0x" << std::hex << (int)reg << ", val: " << (int)val << std::dec);
 
         return true;
     }
