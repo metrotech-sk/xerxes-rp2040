@@ -4,6 +4,7 @@
 from xerxes_protocol import XerxesNetwork, XerxesRoot, Leaf
 import logging
 import argparse
+import time
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ def main():
         description="Discover Xerxes devices on the network"
     )
     parser.add_argument(
-        "-t", "--timeout", type=int, default=0.05, help="timeout in seconds"
+        "-t", "--timeout", type=float, default=0.1, help="timeout in seconds"
     )
     parser.add_argument(
         "-d", "--debug", action="store_true", help="enable debug logging"
@@ -23,6 +24,9 @@ def main():
     )
     parser.add_argument(
         "-b", "--baudrate", type=int, default=115200, help="baudrate"
+    )
+    parser.add_argument(
+        "-a", "--address", type=int, default=0xFF, help="direct address"
     )
     args = parser.parse_args()
 
@@ -41,17 +45,34 @@ def main():
     cont = True
     while cont:
         leaves = []
-        for i in range(32):
+        if args.address == 0xFF:
+            for i in range(32):
+                try:
+                    leaf = Leaf(i, XR)
+                    pr = leaf.ping()
+                    log.debug(f"Found leaf {i} at address {i}")
+                    log.debug(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
+                    leaves.append(leaf)
+                except TimeoutError:
+                    log.debug(f"Leaf {i} not found")
+                except ValueError:
+                    log.warning(f"Error reading values from leaf {i}")
+                except KeyboardInterrupt:
+                    cont = False
+                    break
+        else:
             try:
-                leaf = Leaf(i, XR)
+                leaf = Leaf(args.address, XR)
                 pr = leaf.ping()
-                log.debug(f"Found leaf {i} at address {i}")
+                log.debug(
+                    f"Found leaf {args.address} at address {args.address}"
+                )
                 log.debug(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
                 leaves.append(leaf)
             except TimeoutError:
-                log.debug(f"Leaf {i} not found")
+                log.debug(f"Leaf {args.address} not found")
             except ValueError:
-                log.warning(f"Error reading values from leaf {i}")
+                log.warning(f"Error reading values from leaf {args.address}")
             except KeyboardInterrupt:
                 cont = False
                 break
@@ -71,7 +92,7 @@ def main():
             except KeyboardInterrupt:
                 cont = False
                 break
-
+        time.sleep(0.1)
         log.debug(f"Found {leaves}")
 
     serial.close()
