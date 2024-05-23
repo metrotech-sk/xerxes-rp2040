@@ -6,7 +6,7 @@ from struct import unpack
 
 # Serial settings
 serial_port = "/dev/ttyUSB0"
-baud_rate = 200000
+baud_rate = 300000
 
 # Initialize serial
 ser = serial.Serial(serial_port, baud_rate, timeout=0.01)
