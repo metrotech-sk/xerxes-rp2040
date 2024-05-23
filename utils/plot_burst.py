@@ -64,7 +64,7 @@ def update(frame):
         input3.append(vals[2])
         input4.append(vals[3])
 
-        if len(timestamps) > 100:
+        if len(timestamps) > 200:
             timestamps.pop(0)
             input1.pop(0)
             input2.pop(0)
@@ -77,6 +77,7 @@ def update(frame):
         #    min(min(input1), min(input2), min(input3), min(input4)) - 0.01,
         #    max(max(input1), max(input2), max(input3), max(input4)) + 0.01,
         # )
+        # update y axis span label
 
         ax.set_ylim(0, 1)
 
