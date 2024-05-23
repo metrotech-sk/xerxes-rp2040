@@ -5,7 +5,7 @@
 #include "hardware/clocks.h"
 
 /** @brief Default baudrate for serial communication */
-#define DEFAULT_BAUDRATE 350000
+#define DEFAULT_BAUDRATE 300000
 
 #define RX_TX_QUEUE_SIZE 256 ///< 256 bytes
 #define FIFO_DEPTH 32        ///< 32 bytes

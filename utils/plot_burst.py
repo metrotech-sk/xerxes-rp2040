@@ -9,7 +9,7 @@ import numpy as np
 
 # Serial settings
 serial_port = "/dev/ttyUSB0"
-baud_rate = 350000
+baud_rate = 300000
 
 # Initialize serial
 ser = serial.Serial(serial_port, baud_rate, timeout=0.01)
@@ -64,7 +64,7 @@ def update(frame):
         input3.append(vals[2])
         input4.append(vals[3])
 
-        if len(timestamps) > 300:
+        if len(timestamps) > 100:
             timestamps.pop(0)
             input1.pop(0)
             input2.pop(0)
@@ -73,10 +73,12 @@ def update(frame):
 
         # Update plot limits
         ax.set_xlim(timestamps[0], timestamps[-1])
-        ax.set_ylim(
-            min(min(input1), min(input2), min(input3), min(input4)) - 0.01,
-            max(max(input1), max(input2), max(input3), max(input4)) + 0.01,
-        )
+        # ax.set_ylim(
+        #    min(min(input1), min(input2), min(input3), min(input4)) - 0.01,
+        #    max(max(input1), max(input2), max(input3), max(input4)) + 0.01,
+        # )
+
+        ax.set_ylim(0, 1)
 
         line1.set_data(timestamps, input1)
         line2.set_data(timestamps, input2)
