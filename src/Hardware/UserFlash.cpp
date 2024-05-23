@@ -4,18 +4,17 @@
 #include "hardware/sync.h"
 #include <cstring>
 #include "Core/Definitions.h"
-
-
+#include "MemoryMap.h"
 
 bool userInitFlash(uint8_t *memTable)
 {
     // disable interrupts first
     auto status = save_and_disable_interrupts();
 
-    const uint8_t *flash_target_contents = (const uint8_t *) (XIP_BASE + FLASH_TARGET_OFFSET); // Flash memory contents
-    uint64_t* uid        = (uint64_t *)(memTable + UID_OFFSET);     // Unique ID of the device
+    const uint8_t *flash_target_contents = (const uint8_t *)(XIP_BASE + FLASH_TARGET_OFFSET); // Flash memory contents
+    uint64_t *uid = (uint64_t *)(memTable + UID_OFFSET);                                      // Unique ID of the device
 
-    //read UID
+    // read UID
     flash_get_unique_id((uint8_t *)uid);
 
     // read flash
@@ -23,27 +22,28 @@ bool userInitFlash(uint8_t *memTable)
 
     // check if flash is empty
     bool empty = true;
-    for(uint16_t i = 0; i < VOLATILE_OFFSET; i++)
+    for (uint16_t i = 0; i < VOLATILE_OFFSET; i++)
     {
-        if(memTable[i] != 0xFF)
+        if (memTable[i] != 0xFF)
         {
             empty = false;
             break;
         }
     }
-       
-    restore_interrupts(status);
-    if(empty) return false;
-    else return true;
-}
 
+    restore_interrupts(status);
+    if (empty)
+        return false;
+    else
+        return true;
+}
 
 void updateFlash(const uint8_t *memTable)
 {
     // disable interrupts first
     auto status = save_and_disable_interrupts();
 
-    // erase flash, must be done in sector size, 4KB, it takes 49ms    
+    // erase flash, must be done in sector size, 4KB, it takes 49ms
     flash_range_erase(FLASH_TARGET_OFFSET, VOLATILE_OFFSET);
 
     // copy memory to buffer

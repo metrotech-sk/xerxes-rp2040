@@ -224,6 +224,32 @@ void core1Entry()
     while (true)
     {
         device.update();
+        std::vector<uint8_t> msg;
+        auto timestamp = time_us_64();
+        msg.push_back(0x01); // SOH
+        msg.push_back(0x02); // STX
+        {
+            uint8_t bytes[sizeof(uint64_t)];
+            std::memcpy(bytes, &timestamp, sizeof(uint64_t));
+            msg.insert(msg.end(), bytes, bytes + sizeof(uint64_t));
+        }
+        {
+            uint8_t bytes[sizeof(float)];
+            std::memcpy(bytes, _reg.pv0, sizeof(float));
+            msg.insert(msg.end(), bytes, bytes + sizeof(float));
+            std::memcpy(bytes, _reg.pv1, sizeof(float));
+            msg.insert(msg.end(), bytes, bytes + sizeof(float));
+            std::memcpy(bytes, _reg.pv2, sizeof(float));
+            msg.insert(msg.end(), bytes, bytes + sizeof(float));
+            std::memcpy(bytes, _reg.pv3, sizeof(float));
+            msg.insert(msg.end(), bytes, bytes + sizeof(float));
+        }
+        msg.push_back(0x03); // ETX
+        msg.push_back(0x04); // EOT
+
+        // Packet p(msg);
+        // xn.sendData(p);
+        uart_write_blocking(uart0, msg.data(), msg.size());
     }
 
 #else  // __TIGHTLOOP
