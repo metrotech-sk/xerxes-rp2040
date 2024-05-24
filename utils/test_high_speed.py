@@ -17,6 +17,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b", "--baudrate", type=int, default=115200, help="baudrate"
     )
+    parser.add_argument(
+        "-n", "--num", type=int, default=4, help="number of devices"
+    )
     args = parser.parse_args()
 
     if args.verbose:
@@ -34,24 +37,25 @@ if __name__ == "__main__":
         while com.read(1) != b"\x01" or com.read(1) != b"\x02":
             pass
         timestamp = com.read(8)
+        timestamp = struct.unpack("<Q", timestamp)[0]
         etxeot = com.read(2)
         if etxeot != b"\x03\x04":
             logging.debug("Not a sync packet")
             continue
 
         data = []
-        while True:
+        for _ in range(args.num):
             sohstx = com.read(2)
             if sohstx != b"\x01\x02":
                 logging.warning("Not a valid header")
                 break
             payload = com.read(16)
             eotetx = com.read(2)
-            if eotetx != b"\x04\x03":
-                logging.warning("Not a valid footer")
+            if eotetx != b"\x03\x04":
+                logging.warning(f"Not a valid footer, got {eotetx}")
                 break
             # unpack 4 floats:
             data = struct.unpack("<ffff", payload)
-            print(data)
+            print(timestamp, data)
 
     logging.debug("End high speed test")
