@@ -48,7 +48,7 @@ void uart_interrupt_handler()
 void userInitUart()
 {
     // Initialise UART 0 on 115200baud
-    uart_init(uart0, DEFAULT_BAUDRATE);
+    uart_init(uart0, __BAUDRATE);
 
     // Set the GPIO pin mux to the UART - 16 is TX, 17 is RX
     gpio_set_function(RS_TX_PIN, GPIO_FUNC_UART);

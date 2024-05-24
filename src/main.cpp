@@ -37,80 +37,135 @@ volatile bool core1idle = true; // core1 idle flag
 volatile bool useUsb = false;   // use usb uart flag
 volatile bool awake = true;
 
+#ifndef __SAMPLING_FREQUENCY
+#define __SAMPLING_FREQUENCY 100 // Hz
+#endif
+
+const int32_t _TIMER_DELAY_US = -1000000 / __SAMPLING_FREQUENCY; // 100Hz
+
 /**
  * @brief Core 1 entry point, runs in background
  */
 void core1Entry();
+bool repeating_timer_callback(struct repeating_timer *t);
+bool expect(const char expected);
+void wait_for_sync();
+void sync();
+void make_packet(std::vector<uint8_t> &packet);
+void dump_packet(const std::vector<uint8_t> &packet);
 
-enum class CTRL
+namespace CTRL
 {
-    SOH = 0x01,
-    STX = 0x02,
-    ETX = 0x03,
-    EOT = 0x04
+    const uint8_t SOH = 0x01;
+    const uint8_t STX = 0x02;
+    const uint8_t ETX = 0x03;
+    const uint8_t EOT = 0x04;
 };
+
+void make_packet(std::vector<uint8_t> &packet)
+{
+    // dump data to vector
+    packet.push_back(CTRL::SOH);
+    packet.push_back(CTRL::STX);
+    uint8_t bytes[sizeof(float)];
+    std::memcpy(bytes, _reg.pv0, sizeof(float));
+    packet.insert(packet.end(), bytes, bytes + sizeof(float));
+    std::memcpy(bytes, _reg.pv1, sizeof(float));
+    packet.insert(packet.end(), bytes, bytes + sizeof(float));
+    std::memcpy(bytes, _reg.pv2, sizeof(float));
+    packet.insert(packet.end(), bytes, bytes + sizeof(float));
+    std::memcpy(bytes, _reg.pv3, sizeof(float));
+    packet.insert(packet.end(), bytes, bytes + sizeof(float));
+    packet.push_back(CTRL::ETX);
+    packet.push_back(CTRL::EOT);
+}
+
+void dump_packet(const std::vector<uint8_t> &packet)
+{
+    // dump the data to the bus
+    uart_write_blocking(uart0, packet.data(), packet.size());
+}
 
 bool repeating_timer_callback(struct repeating_timer *t)
 {
-    xlog_dbg("Repeat timer callback");
+    ledBusyOn();
+    device.update();
+    std::vector<uint8_t> packet;
+    make_packet(packet);
+    ledBusyOff();
+
+    sync();
+    dump_packet(packet);
+
+    /*
+    TODO: send data too
+    */
     return true;
 }
 
-void send_empty_sync_packet()
-{
-    // send empty sync packet SOH + STX + ETX + EOT
-
-    uint8_t syncPacket[4] = {CTRL::SOH, CTRL::STX, CTRL::ETX, CTRL::EOT};
-    uart_write_blocking(uart0, syncPacket, 4);
-}
-
-bool expect(char expected)
+bool expect(const char expected)
 {
     uint8_t data;
-    uart_read_blocking(uart0, &data, 1);
+    // uart_read_blocking(uart0, &data, 1); // we using queue
+    queue_remove_blocking(&rxFifo, &data);
+
     if (data == expected)
     {
         return true;
     }
     else
     {
-        xlog_trace("Expected %d, got %d", expected, data);
+        xlog_trace("Expected " << expected << " but got " << data);
         return false;
-    }
-}
-
-void wait_for_sequence(const uint8_t *sequence, size_t length)
-{
-    size_t index = 0;
-
-    while (true)
-    {
-        if (expect(sequence[index]))
-        {
-            index++;
-            if (index == length)
-            {
-                return; // Entire sequence matched, exit the function
-            }
-        }
-        else
-        {
-            index = 0; // Reset if the expected character is not received
-        }
     }
 }
 
 void wait_for_sync()
 {
-    uint8_t *syncPacket = (const uint8_t[]){CTRL::SOH, CTRL::STX, CTRL::ETX, CTRL::EOT};
-    wait_for_sequence(syncPacket, sizeof(syncPacket);
-    xlog_dbg("Synced");
+    while (1)
+    {
+        if (expect(CTRL::SOH))
+        {
+            if (expect(CTRL::STX))
+            {
+                for (size_t i = 0; i < 8; i++)
+                {
+                    uint8_t data;
+                    queue_remove_blocking(&rxFifo, &data);
+                }
+                if (expect(CTRL::ETX))
+                {
+                    if (expect(CTRL::EOT))
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void sync()
+{
+    uint64_t timestamp = time_us_64();
+    // construct sync packet out of SOH STX <timestamp> ETX EOT
+    std::vector<uint8_t> syncPacket = {CTRL::SOH, CTRL::STX};
+    {
+        uint8_t bytes[sizeof(timestamp)];
+        std::memcpy(bytes, &timestamp, sizeof(uint64_t));
+        syncPacket.insert(syncPacket.end(), bytes, bytes + sizeof(uint64_t));
+    }
+    syncPacket.push_back(CTRL::ETX);
+    syncPacket.push_back(CTRL::EOT);
+    // send sync packet
+    ledComOn();
+    uart_write_blocking(uart0, syncPacket.data(), syncPacket.size());
 }
 
 int main(void)
 {
     // enable watchdog for 200ms, pause on debug = true
-    watchdog_enable(DEFAULT_WATCHDOG_DELAY, true);
+    // watchdog_enable(DEFAULT_WATCHDOG_DELAY, true);
 
     // init system
     userInit(); // 374us
@@ -155,6 +210,7 @@ int main(void)
     watchdog_update();
     device = __DEVICE_CLASS(&_reg);
     watchdog_update();
+    device.init();
 
     if (useUsb)
     {
@@ -165,56 +221,42 @@ int main(void)
     // init uart over RS485
     userInitUart();
 
+    // start core1 for device operation
+    // multicore_launch_core1(core1Entry); // to spin on watchdog
+
     // Create a repeating timer that calls repeating_timer_callback.
     // If the delay is > 0 then this is the delay between the previous callback ending and the next starting.
-    // If the delay is negative (see below) then the next call to the callback will be exactly 500ms after the
+    // If the delay is negative (see below) then the next call to the callback will be exactly XYus after the
     // start of the call to the last callback
     struct repeating_timer timer;
-    // add_repeating_timer_ms(500, repeating_timer_callback, NULL, &timer);
-
-    add_repeating_timer_us(100000, repeating_timer_callback, NULL, &timer);
 
     // main loop, runs forever, handles all communication in this loop
-    while (1)
+    if (__DEVICE_ADDRESS == 0)
     {
-        wait_for_sync();
-    }
-    while (0)
-    {
-        // update watchdog
-        watchdog_update();
-
-        // running on RS485, sync for incoming messages from master, timeout
-        // = 5ms
-        xlog_trace("Syncing xerxes network");
-        xs.sync(5000);
-
-        // send char if tx queue is not empty and uart is writable
-        if (!queue_is_empty(&txFifo))
+        add_repeating_timer_us(_TIMER_DELAY_US, repeating_timer_callback, NULL, &timer); // sync every 10ms
+        while (1)
         {
-            ledComOn(); // set communication activity led
-            xlog_trace("got some data to process");
-            uint txLen = queue_get_level(&txFifo);
-            assert(txLen <= RX_TX_QUEUE_SIZE);
-
-            uint8_t toSend[txLen];
-
-            // drain queue
-            for (uint i = 0; i < txLen; i++)
-            {
-                queue_remove_blocking(&txFifo, &toSend[i]);
-            }
-            xlog_trace("Writing data to uart");
-            // write char to bus, this will clear the interrupt
-            uart_write_blocking(uart0, toSend, txLen);
-            ledComOff(); // clear communication activity led
+            busy_wait_us(10);
         }
-
-        if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))
+    }
+    else
+    {
+        while (1)
         {
-            // rx fifo is full, set the cpu_overload error flag
-            xlog_error("Queue is full");
-            _reg.errorSet(ERROR_MASK_UART_OVERLOAD);
+            ledBusyOn();
+            device.update();
+            ledBusyOff();
+            std::vector<uint8_t> packet;
+            make_packet(packet);
+
+            wait_for_sync();
+            absolute_time_t window = make_timeout_time_us(__DEVICE_ADDRESS * 1000);
+            // wait until the time window
+            while (!time_reached(window))
+            {
+                busy_wait_us(1);
+            }
+            dump_packet(packet);
         }
     }
 }
