@@ -32,10 +32,6 @@ queue_t txFifo;
 /// @brief receive FIFO queue for UART
 queue_t rxFifo;
 
-RS485 xn(&txFifo, &rxFifo); // RS485 interface
-Protocol xp(&xn);           // Xerxes protocol implementation
-Slave xs;
-
 volatile bool usrSwitchOn;      // user switch state
 volatile bool core1idle = true; // core1 idle flag
 volatile bool useUsb = false;   // use usb uart flag
@@ -46,14 +42,78 @@ volatile bool awake = true;
  */
 void core1Entry();
 
+enum class CTRL
+{
+    SOH = 0x01,
+    STX = 0x02,
+    ETX = 0x03,
+    EOT = 0x04
+};
+
+bool repeating_timer_callback(struct repeating_timer *t)
+{
+    xlog_dbg("Repeat timer callback");
+    return true;
+}
+
+void send_empty_sync_packet()
+{
+    // send empty sync packet SOH + STX + ETX + EOT
+
+    uint8_t syncPacket[4] = {CTRL::SOH, CTRL::STX, CTRL::ETX, CTRL::EOT};
+    uart_write_blocking(uart0, syncPacket, 4);
+}
+
+bool expect(char expected)
+{
+    uint8_t data;
+    uart_read_blocking(uart0, &data, 1);
+    if (data == expected)
+    {
+        return true;
+    }
+    else
+    {
+        xlog_trace("Expected %d, got %d", expected, data);
+        return false;
+    }
+}
+
+void wait_for_sequence(const uint8_t *sequence, size_t length)
+{
+    size_t index = 0;
+
+    while (true)
+    {
+        if (expect(sequence[index]))
+        {
+            index++;
+            if (index == length)
+            {
+                return; // Entire sequence matched, exit the function
+            }
+        }
+        else
+        {
+            index = 0; // Reset if the expected character is not received
+        }
+    }
+}
+
+void wait_for_sync()
+{
+    uint8_t *syncPacket = (const uint8_t[]){CTRL::SOH, CTRL::STX, CTRL::ETX, CTRL::EOT};
+    wait_for_sequence(syncPacket, sizeof(syncPacket);
+    xlog_dbg("Synced");
+}
+
 int main(void)
 {
     // enable watchdog for 200ms, pause on debug = true
     watchdog_enable(DEFAULT_WATCHDOG_DELAY, true);
 
     // init system
-    userInit();                        // 374us
-    xs = Slave(&xp, *_reg.devAddress); ///< Xerxes slave implementation
+    userInit(); // 374us
 
     // blink led for 10 ms - we are alive
     gpio_put(USR_LED_PIN, 1);
@@ -94,56 +154,32 @@ int main(void)
 
     watchdog_update();
     device = __DEVICE_CLASS(&_reg);
-    try
-    {
-        device.init();
-    }
-    catch (const std::exception &e)
-    {
-        xlog_error("Exception in device init: " << e.what());
-        _reg.errorSet(ERROR_MASK_DEVICE_INIT);
-    }
-    catch (...)
-    {
-        xlog_error("Unknown exception in device init");
-        _reg.errorSet(ERROR_MASK_DEVICE_INIT);
-    }
     watchdog_update();
 
     if (useUsb)
     {
 
         cout << device.getInfoJson() << endl;
-
-        // set to free running mode and calculate statistics for usb uart mode so we can see the values
-        _reg.config->bits.freeRun = 1;
-        _reg.config->bits.calcStat = 1;
     }
 
     // init uart over RS485
     userInitUart();
 
-    // bind callbacks, ~204us
-    xs.bind(MSGID_PING, unicast(pingCallback));
-    xs.bind(MSGID_WRITE, unicast(writeRegCallback));
-    xs.bind(MSGID_READ, unicast(readRegCallback));
-    xs.bind(MSGID_SYNC, broadcast(syncCallback));
-    xs.bind(MSGID_SLEEP, broadcast(sleepCallback));
-    xs.bind(MSGID_RESET_SOFT, broadcast(softResetCallback));
-    xs.bind(MSGID_RESET_HARD, unicast(factoryResetCallback));
-    xs.bind(MSGID_GET_INFO, unicast(getSensorInfoCallback));
+    // Create a repeating timer that calls repeating_timer_callback.
+    // If the delay is > 0 then this is the delay between the previous callback ending and the next starting.
+    // If the delay is negative (see below) then the next call to the callback will be exactly 500ms after the
+    // start of the call to the last callback
+    struct repeating_timer timer;
+    // add_repeating_timer_ms(500, repeating_timer_callback, NULL, &timer);
 
-    // drain uart fifos, just in case there is something in there
-    while (!queue_is_empty(&txFifo))
-        queue_remove_blocking(&txFifo, NULL);
-    while (!queue_is_empty(&rxFifo))
-        queue_remove_blocking(&rxFifo, NULL);
-
-    // start core1 for device operation
-    multicore_launch_core1(core1Entry);
+    add_repeating_timer_us(100000, repeating_timer_callback, NULL, &timer);
 
     // main loop, runs forever, handles all communication in this loop
     while (1)
+    {
+        wait_for_sync();
+    }
+    while (0)
     {
         // update watchdog
         watchdog_update();
@@ -180,109 +216,15 @@ int main(void)
             xlog_error("Queue is full");
             _reg.errorSet(ERROR_MASK_UART_OVERLOAD);
         }
-
-// save power in release mode
-#ifdef NDEBUG
-        if (core1idle)
-        {
-            // setClocksLP();
-            sleep_us(10);
-            // setClocksHP();
-        }
-#endif // NDEBUG
     }
 }
 
 void core1Entry()
 {
     xlog_dbg("Entering core 1");
-    uint64_t endOfCycle = 0;
-    uint64_t cycleDuration = 0;
-    int64_t sleepFor = 0;
 
     // let core0 lockout core1
     multicore_lockout_victim_init();
 
-// enable gpio interrupts for core1 e.g. for actors or encoders
-#if defined(__SHIELD_ENCODER) || defined(__SHIELD_CUTTER)
-    // top priority to catch encoder events
-    irq_set_priority(IO_IRQ_BANK0, 0);
-
-    // enable gpio interrupts for encoder using lambda function and set callback simultaneously
-    gpio_set_irq_enabled_with_callback(
-        Xerxes::ENCODER_PIN_A,
-        GPIO_IRQ_EDGE_RISE,
-        true,
-        [](uint gpio, uint32_t)
-        {
-            device.encoderIrqHandler(gpio);
-        });
-#endif // __SHIELD_ENCODER
-
-#if defined(__TIGHTLOOP)
-    // set core1 to free run mode, process device data as fast as possible
-    while (true)
-    {
-        device.update();
-    }
-
-#else  // __TIGHTLOOP
-    // core1 mainloop
-    while (true)
-    {
-        // core is set to free run, start cycle
-        auto startOfCycle = time_us_64();
-
-        // turn on led for a short time to signal start of cycle
-        gpio_put(USR_LED_PIN, 1);
-        sleep_us(10);
-        // turn off led
-        gpio_put(USR_LED_PIN, 0);
-
-        if (_reg.config->bits.freeRun)
-        {
-            device.update();
-        }
-
-        { // scope for json output
-            // cout timestamp and net cycle time in json format
-            auto timestamp = time_us_64();
-            stringstream ss;
-            ss << "{" << endl;
-            ss << "\"timestamp\":" << timestamp << "," << endl;
-            ss << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
-            ss << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
-
-            // ss device values in json format
-            ss << "\"device\":" << device.getJson() << endl;
-            ss << "}" << endl;
-            printf("%s\n", ss.str().c_str());
-        }
-
-        // calculate how long it took to finish cycle
-        endOfCycle = time_us_64();
-        cycleDuration = endOfCycle - startOfCycle;
-
-        // calculate net cycle time as moving average
-        *_reg.netCycleTimeUs = static_cast<uint32_t>(0.9 * *_reg.netCycleTimeUs) + static_cast<uint32_t>(0.1 * static_cast<uint32_t>(cycleDuration));
-
-        // calculate remaining sleep time
-        sleepFor = *_reg.desiredCycleTimeUs - cycleDuration;
-
-        // sleep for the remaining time
-        if (sleepFor > 0)
-        {
-            core1idle = true;
-            sleep_us(sleepFor);
-            core1idle = false;
-            _reg.errorClear(ERROR_MASK_SENSOR_OVERLOAD);
-        }
-        else
-        {
-            _reg.errorSet(ERROR_MASK_SENSOR_OVERLOAD);
-        }
-    }
-#endif // __TIGHTLOOP
-
-    core1idle = true;
+    // not used yet
 }
