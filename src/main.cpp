@@ -55,11 +55,6 @@ int main(void)
     userInit();                        // 374us
     xs = Slave(&xp, *_reg.devAddress); ///< Xerxes slave implementation
 
-    // blink led for 10 ms - we are alive
-    gpio_put(USR_LED_PIN, 1);
-    sleep_ms(10);
-    gpio_put(USR_LED_PIN, 0);
-
     // clear error register
     _reg.errorClear(0xFFFFFFFF);
 
@@ -70,7 +65,14 @@ int main(void)
     }
 
     // check if user switch is on, if so, use usb uart
-    useUsb = gpio_get(USR_SW_PIN);
+    // useUsb = gpio_get(USR_SW_PIN);
+    // in this special build we will use USB when in debug
+#ifdef NDEBUG
+    useUsb = false;
+#else
+    useUsb = true;
+    stdio_usb_init();
+#endif
 
     // if user button is pressed, load default values a.k.a. FACTORY RESET
     if (!gpio_get(USR_BTN_PIN))
@@ -91,6 +93,11 @@ int main(void)
     {
         stdio_usb_init();
     }
+
+    // blink led for 10 ms - we are alive
+    gpio_put(USR_LED_PIN, 1);
+    sleep_ms(10);
+    gpio_put(USR_LED_PIN, 0);
 
     watchdog_update();
     device = __DEVICE_CLASS(&_reg);
