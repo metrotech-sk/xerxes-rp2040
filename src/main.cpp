@@ -64,33 +64,11 @@ int main(void)
         _reg.errorSet(ERROR_MASK_WATCHDOG_TIMEOUT);
     }
 
-    // check if user switch is on, if so, use usb uart
-    // useUsb = gpio_get(USR_SW_PIN);
-    // in this special build we will use USB when in debug
-#ifdef NDEBUG
-    useUsb = false;
-#else
-    useUsb = true;
-    stdio_usb_init();
-#endif
-
     // if user button is pressed, load default values a.k.a. FACTORY RESET
     if (!gpio_get(USR_BTN_PIN))
+    {
         userLoadDefaultValues();
-
-    if (useUsb)
-    {
-        // init usb uart
-        userInitUartDisabled();
-
-        while (!stdio_usb_connected()) // wait for usb connection
-        {
-            watchdog_update();
-        }
-        xlog_info("USB Connected");
-    }
-    else
-    {
+        useUsb = true;
         stdio_usb_init();
     }
 
