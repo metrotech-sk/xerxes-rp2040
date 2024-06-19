@@ -94,8 +94,8 @@ namespace Xerxes
         longToPacket(ExchangeBlock(CMD::Read_Status_Summary), packetT);
 
         // convert data to angles
-        *_reg->pv0 = static_cast<float>(getDegFromPacket(packetX));
-        *_reg->pv1 = static_cast<float>(getDegFromPacket(packetY));
+        *_reg->pv0 = (static_cast<float>(getDegFromPacket(packetX)) * *_reg->gainPv0) - *_reg->offsetPv0;
+        *_reg->pv1 = (static_cast<float>(getDegFromPacket(packetY)) * *_reg->gainPv1) - *_reg->offsetPv1;
         // pv2 = static_cast<float>(getDegFromPacket(packetZ));
 
         if (!packetX->DATA_H &&
@@ -117,7 +117,7 @@ namespace Xerxes
         }
         else
         {
-            *_reg->pv3 = temp;
+            *_reg->pv3 = (temp * *_reg->gainPv3) - *_reg->offsetPv3;
         }
 
         // if calcStat is true, update statistics
