@@ -122,10 +122,10 @@ if __name__ == "__main__":
     while True:
         try:
             pv0, pv1, pv2, pv3 = (
-                leaf.pv0 + leaf.offset_pv0,
-                leaf.pv1 + leaf.offset_pv1,
-                leaf.pv2 + leaf.offset_pv2,
-                leaf.pv3 + leaf.offset_pv3,
+                leaf.mean_pv0,
+                leaf.mean_pv1,
+                leaf.mean_pv2,
+                leaf.mean_pv3,
             )
             print(
                 f"PV0: {pv0:.4f} PV1: {pv1:.4f} PV2: {pv2:.4f} PV3: {pv3:.4f}"

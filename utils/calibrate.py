@@ -76,12 +76,25 @@ parser.add_argument(
     help="timeout in seconds for serial communication, default is 0.02s",
 )
 parser.add_argument(
+    "--delay",
+    metavar="DELAY",
+    required=False,
+    type=float,
+    default=10,
+    help="delay in seconds before and during zeroing, default is 10s",
+)
+parser.add_argument(
     "--loglevel",
     metavar="LOGLEVEL",
     required=False,
     type=str,
     default="INFO",
     help="log level, default is INFO",
+)
+parser.add_argument(
+    "--pv3",
+    action="store_true",
+    help="read and print process value 3 too",
 )
 
 # whether to show history or not in output formating
@@ -132,8 +145,6 @@ if __name__ == "__main__":
 
     exit_val = 0
 
-    time_start = time.perf_counter()
-
     # clear offsets first
     write_param_safe(leaf, "offset_pv0", 0)
     write_param_safe(leaf, "offset_pv1", 0)
@@ -144,11 +155,20 @@ if __name__ == "__main__":
     write_param_safe(leaf, "gain_pv2", 1)
     write_param_safe(leaf, "gain_pv3", 1)
 
-    while time.perf_counter() - time_start < 10:
-        pv0s.append(leaf.pv0)
-        pv1s.append(leaf.pv1)
-        pv2s.append(leaf.pv2)
-        pv3s.append(leaf.pv3)
+    log.info(f"Waiting for {args.delay} seconds to stabilize.")
+    time.sleep(args.delay)
+    log.info("Zeroing process values...")
+
+    time_start = time.perf_counter()
+    while time.perf_counter() - time_start < args.delay:
+        pv0s.append(leaf.mean_pv0)
+        pv1s.append(leaf.mean_pv1)
+        pv2s.append(leaf.mean_pv2)
+        pv3s.append(leaf.mean_pv3)
+        print(
+            f" {- time.perf_counter() + time_start + args.delay:.1f}s remaining",
+            end="\r",
+        )
 
     avgpv0 = sum(pv0s) / len(pv0s)
     avgpv1 = sum(pv1s) / len(pv1s)
@@ -160,8 +180,12 @@ if __name__ == "__main__":
     stdevpv2 = (sum((x - avgpv2) ** 2 for x in pv2s) / len(pv2s)) ** 0.5
     stdevpv3 = (sum((x - avgpv3) ** 2 for x in pv3s) / len(pv3s)) ** 0.5
 
-    write_param_safe(leaf, "offset_pv0", -avgpv0)
-    write_param_safe(leaf, "offset_pv1", -avgpv1)
+    write_param_safe(leaf, "offset_pv0", avgpv0)
+    write_param_safe(leaf, "offset_pv1", avgpv1)
+    write_param_safe(leaf, "offset_pv2", avgpv2)
+    if args.pv3:
+        write_param_safe(leaf, "offset_pv3", avgpv3)
+    log.info("Zeroing process values done.")
 
     print(f"Offset PV0: {avgpv0:.4f} ± {stdevpv0:.4f}")
     print(f"Offset PV1: {avgpv1:.4f} ± {stdevpv1:.4f}")
