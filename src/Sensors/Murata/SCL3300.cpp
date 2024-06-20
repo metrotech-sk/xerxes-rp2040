@@ -65,6 +65,13 @@ namespace Xerxes
         // call init sequence
         initSequence();
 
+        constexpr uint32_t ring_buf_len = 10;
+        // initialize ringbuffer with size of RING_BUFFER_LEN (defined in Definitions.h)
+        rbpv0 = StatisticBuffer<float>(ring_buf_len);
+        rbpv1 = StatisticBuffer<float>(ring_buf_len);
+        rbpv2 = StatisticBuffer<float>(ring_buf_len);
+        rbpv3 = StatisticBuffer<float>(ring_buf_len);
+
         // change sample rate to 10Hz
         *_reg->desiredCycleTimeUs = _sensorUpdateRateUs;
 
