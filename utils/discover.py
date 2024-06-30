@@ -82,8 +82,15 @@ def main():
 
         for l in leaves:
             try:
+                print(leaf.info)
                 print(
                     f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], pv0-3: {l.pv0:2.3f}, {l.pv1:2.3f}, {l.pv2:2.3f}, {l.pv3:2.3f}"
+                )
+                print(
+                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], offset_pv0-3: {l.offset_pv0:2.3f}, {l.offset_pv1:2.3f}, {l.offset_pv2:2.3f}, {l.offset_pv3:2.3f}"
+                )
+                print(
+                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], gain_pv0-3: {l.gain_pv0:2.3f}, {l.gain_pv1:2.3f}, {l.gain_pv2:2.3f}, {l.gain_pv3:2.3f}"
                 )
             except TimeoutError:
                 log.warning(f"Leaf {l.address} not found")
@@ -92,7 +99,7 @@ def main():
             except KeyboardInterrupt:
                 cont = False
                 break
-        time.sleep(0.1)
+        time.sleep(0.5)
         log.debug(f"Found {leaves}")
 
     serial.close()
