@@ -51,6 +51,8 @@ int main(void)
     // enable watchdog for 200ms, pause on debug = true
     watchdog_enable(DEFAULT_WATCHDOG_DELAY, true);
 
+    stdio_init_all();
+
     // init system
     userInit();                        // 374us
     xs = Slave(&xp, *_reg.devAddress); ///< Xerxes slave implementation
