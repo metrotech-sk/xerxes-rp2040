@@ -156,6 +156,7 @@ if __name__ == "__main__":
     write_param_safe(leaf, "gain_pv3", 1)
 
     log.info(f"Waiting for {args.delay} seconds to stabilize.")
+    leaf.reset_soft()
     time.sleep(args.delay)
     log.info("Zeroing process values...")
 
@@ -185,7 +186,13 @@ if __name__ == "__main__":
     write_param_safe(leaf, "offset_pv2", avgpv2)
     if args.pv3:
         write_param_safe(leaf, "offset_pv3", avgpv3)
+
+    leaf.reset_soft()
+    time.sleep(0.2)
     log.info("Zeroing process values done.")
+    log.info(
+        f"Offsets written to device, offset_pv0: {leaf.offset_pv0:.4f}, offset_pv1: {leaf.offset_pv1:.4f}, offset_pv2: {leaf.offset_pv2:.4f}, offset_pv3: {leaf.offset_pv3:.4f}"
+    )
 
     print(f"Offset PV0: {avgpv0:.4f} ± {stdevpv0:.4f}")
     print(f"Offset PV1: {avgpv1:.4f} ± {stdevpv1:.4f}")
