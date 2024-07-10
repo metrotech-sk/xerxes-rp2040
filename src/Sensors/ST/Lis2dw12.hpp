@@ -148,7 +148,7 @@ namespace Xerxes
 
         const bool dataReady() const;
 
-        constexpr static size_t N_SAMPLES = 2048;
+        constexpr static size_t N_SAMPLES = 1024;
         constexpr static uint16_t FREQ = 200;
 
     protected:

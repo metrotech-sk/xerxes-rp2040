@@ -266,7 +266,7 @@ void core1Entry()
         cycleDuration = endOfCycle - startOfCycle;
 
         // calculate net cycle time as moving average
-        *_reg.netCycleTimeUs = static_cast<uint32_t>(0.9 * *_reg.netCycleTimeUs) + static_cast<uint32_t>(0.1 * static_cast<uint32_t>(cycleDuration));
+        *_reg.netCycleTimeUs = static_cast<uint32_t>(0.9 * *_reg.netCycleTimeUs) + static_cast<uint32_t>(0.1 * static_cast<uint32_t>(cycleDuration)); // TODO: Remove this - not necessary
 
         // calculate remaining sleep time
         sleepFor = *_reg.desiredCycleTimeUs - cycleDuration;

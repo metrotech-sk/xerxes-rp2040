@@ -26,7 +26,7 @@ namespace Xerxes
     void LIS2::init()
     {
         xlog_info("LIS2 init");
-        _devid = DEVID_PRESSURE_60MBAR;
+        _devid = DEVID_ACCEL_LIS;
         _label = "LIS2DW12 Accelerometer";
         *_reg->desiredCycleTimeUs = 10000; // 100Hz
 
@@ -110,15 +110,20 @@ namespace Xerxes
     void LIS2::update()
     {
         std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
+        std::vector<float> *ampls = new std::vector<float>(N_SAMPLES);
 
         auto time_start = time_us_64();
+        uint32_t drdyctr = 0;
 
         for (size_t i = 0; i < N_SAMPLES; i++)
         {
+            drdyctr = 0;
             while (!dataReady())
             {
                 sleep_us(1);
+                drdyctr++;
             }
+
             gpio_put(USR_LED_PIN, 1); // turn on CPU LED to signal data ready
             uint8_t x_l = readRegister(REG::OUT_X_L);
             uint8_t x_h = readRegister(REG::OUT_X_H);
@@ -136,7 +141,12 @@ namespace Xerxes
             yf = (float)yi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
             zf = (float)zi * 2 / (1 << 15); // unit is 1g = 9.81m.s^-1
 
+            *_reg->pv0 = xf;
+            *_reg->pv1 = yf;
+            *_reg->pv2 = zf;
+
             float tot = sqrt(xf * xf + yf * yf + zf * zf);
+            ampls->at(i) = tot - 1; // -1 to remove DC component
 
             ptot->at(i) = cf(tot - 1, 0); // -1 to remove DC component
 
@@ -144,6 +154,7 @@ namespace Xerxes
 
             watchdog_update();
         }
+        xlog_debug("Data ready after: " << drdyctr << "us");
 
         auto time_end = time_us_64();
         xlog_debug("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
@@ -163,20 +174,26 @@ namespace Xerxes
         xlog_debug("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
 
 #ifndef NDEBUG // debug only
-               // xlog_info("Done, printing");
-               // print_fft_output(ptot, FREQ, 32);
-#endif         // NDEBUG
+        xlog_info("Done, printing");
+        print_fft_output(ptot, FREQ, 32);
+#endif // NDEBUG
 
         ptot->at(0) = cf(0, 0); // remove DC component
         float carrier = carrier_freq(ptot, 5);
         xlog_info("Carrier frequency: " << carrier << "Hz");
 
+        // calculate max amplitude
+        auto it = std::max_element(ampls->begin(), ampls->end());
+        float max_amplitude = *it;
+        max_amplitude = max_amplitude; // remove DC component
+        xlog_info("Max amplitude: " << max_amplitude << "g, " << max_amplitude * 9.81 << "m.s^-2");
+
         xlog_debug("Sorting FFT output");
         sort_fft_output(ptot); // around 40ms per 2048 samples
 
 #ifndef NDEBUG
-        // xlog_info("Done, printing");
-        // print_fft_output(ptot, FREQ, 32);
+        xlog_info("Done, printing");
+        print_fft_output(ptot, FREQ, 32);
 #endif // !NDEBUG
 
         uint8_t t_l = readRegister(REG::OUT_T_L);
@@ -184,6 +201,7 @@ namespace Xerxes
         int16_t ti = (int16_t)(t_h << 4 | t_l >> 4);
         auto tf = ((float)ti / 16.0) + 25; // unit is °C, resolution 16 LSB/°C = 0.0625°C
         xlog_info("Temperature: " << tf);
+        *_reg->pv3 = tf;
 
         // store sorted FFT output in message buffer
         float *data = (float *)(_reg->message);
@@ -197,12 +215,13 @@ namespace Xerxes
 
 #ifndef NDEBUG
         // print data to console for debugging
-        for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
-        {
-            std::cout << data[i] << ", " << data[i + 1] << std::endl;
-        }
+        // for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
+        // {
+        //     std::cout << data[i] << ", " << data[i + 1] << std::endl;
+        // }
 #endif // NDEBUG
 
+        /*
         // store top 4 frequencies in pv/av registers
         *_reg->pv0 = ptot->at(0).imag(); // frequency
         *_reg->pv1 = ptot->at(1).imag(); // frequency
@@ -213,6 +232,7 @@ namespace Xerxes
         *_reg->av1 = ptot->at(1).real(); // magnitude
         *_reg->av2 = ptot->at(2).real(); // magnitude
         *_reg->av3 = ptot->at(3).real(); // magnitude
+        */
 
         delete ptot;
 
@@ -223,14 +243,10 @@ namespace Xerxes
     {
         std::stringstream ss;
         ss << "{\n";
-        ss << "  \"f0\":" << *_reg->pv0 << ",\n";
-        ss << "  \"f1\":" << *_reg->pv1 << ",\n";
-        ss << "  \"f2\":" << *_reg->pv2 << ",\n";
-        ss << "  \"f3\":" << *_reg->pv3 << ",\n";
-        ss << "  \"m0\":" << *_reg->av0 << ",\n";
-        ss << "  \"m1\":" << *_reg->av1 << ",\n";
-        ss << "  \"m2\":" << *_reg->av2 << ",\n";
-        ss << "  \"m3\":" << *_reg->av3 << "\n";
+        ss << "  \"x\":" << *_reg->pv0 << ",\n";
+        ss << "  \"y\":" << *_reg->pv1 << ",\n";
+        ss << "  \"z\":" << *_reg->pv2 << ",\n";
+        ss << "  \"t\":" << *_reg->pv3 << ",\n";
         ss << "  }" << std::endl;
         return ss.str();
     }
