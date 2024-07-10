@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 
 """
-Module Name: Read Cutter
-Description: This script performs reads and writes to the Xerxes Cutter device, 
+Module Name: Read PVs
+Description: This script performs reads and writes to the Xerxes device, 
                 and prints the values in a tight loop. Use Ctrl+C to exit.
 Author: theMladyPan
 Version: 1.0
-Date: 2023-05-15
+Date: 2024-07-10
 """
 
 import os
@@ -17,7 +17,13 @@ from serial import Serial
 import time
 import logging
 
-from xerxes_protocol import XerxesRoot, XerxesNetwork, Leaf, DebugSerial
+from xerxes_protocol import (
+    XerxesRoot,
+    XerxesNetwork,
+    Leaf,
+    DebugSerial,
+    memory,
+)
 
 # parse arguments
 parser = argparse.ArgumentParser(
@@ -83,6 +89,14 @@ parser.add_argument(
     default="INFO",
     help="log level, default is INFO",
 )
+parser.add_argument(
+    "--message",
+    action="store_true",
+    required=False,
+    default=False,
+    help="read message buffer from Xerxes device",
+)
+
 
 # whether to show history or not in output formating
 parser.add_argument(
@@ -118,17 +132,26 @@ log.debug(f"Leaf parameters: {dir(leaf)}")
 
 if __name__ == "__main__":
     exit_val = 0
+    time_start = time.perf_counter()
 
     while True:
         try:
             pv0, pv1, pv2, pv3 = (
-                leaf.mean_pv0,
-                leaf.mean_pv1,
-                leaf.mean_pv2,
-                leaf.mean_pv3,
+                leaf.pv0,
+                leaf.pv1,
+                leaf.pv2,
+                leaf.pv3,
             )
+            if args.message:
+                # read message buffer from sensor
+                payload = leaf.read_reg_net(memory.MESSAGE_OFFSET, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 128, 128)
+                print(payload)
+
+            dt = time.perf_counter() - time_start
+            time_start = time.perf_counter()
             print(
-                f"PV0: {pv0:.4f} PV1: {pv1:.4f} PV2: {pv2:.4f} PV3: {pv3:.4f}"
+                f"PV0: {pv0:.4f} PV1: {pv1:.4f} PV2: {pv2:.4f} PV3: {pv3:.4f}, dt: {dt:.4f}s"
                 + " " * 10,
                 end="\r",
             )

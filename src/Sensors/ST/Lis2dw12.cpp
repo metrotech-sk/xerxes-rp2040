@@ -206,12 +206,16 @@ namespace Xerxes
         // store sorted FFT output in message buffer
         float *data = (float *)(_reg->message);
 
-        for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
+        for (size_t i = 0; i < 60; i += 2) // 256bytes / 4bpf = 64 floats
         {
             data[i] = ptot->at(i / 2).imag();     // frequency
             data[i + 1] = ptot->at(i / 2).real(); // magnitude
         }
         xlog_debug("Data stored in message buffer");
+
+        // add carry to message buffer
+        data[60] = carrier;
+        data[61] = max_amplitude;
 
 #ifndef NDEBUG
         // print data to console for debugging
@@ -235,6 +239,7 @@ namespace Xerxes
         */
 
         delete ptot;
+        delete ampls;
 
         // super::update();
     }
