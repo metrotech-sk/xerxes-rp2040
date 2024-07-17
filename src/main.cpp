@@ -18,6 +18,7 @@
 #include "Communication/RS485.hpp"
 #include "Utils/Log.h"
 #include "Utils/Gpio.hpp"
+#include "Utils/Various.hpp"
 
 using namespace std;
 using namespace Xerxes;
@@ -122,9 +123,11 @@ int main(void)
         _reg.config->bits.calcStat = 1;
     }
 
+    xlog_debug("Initializing UART");
     // init uart over RS485
     userInitUart();
 
+    xlog_debug("Binding callbacks");
     // bind callbacks, ~204us
     xs.bind(MSGID_PING, unicast(pingCallback));
     xs.bind(MSGID_WRITE, unicast(writeRegCallback));
@@ -135,15 +138,18 @@ int main(void)
     xs.bind(MSGID_RESET_HARD, unicast(factoryResetCallback));
     xs.bind(MSGID_GET_INFO, unicast(getSensorInfoCallback));
 
+    xlog_debug("Draining UART FIFOs");
     // drain uart fifos, just in case there is something in there
     while (!queue_is_empty(&txFifo))
         queue_remove_blocking(&txFifo, NULL);
     while (!queue_is_empty(&rxFifo))
         queue_remove_blocking(&rxFifo, NULL);
 
+    xlog_debug("Starting core 1 for device operation");
     // start core1 for device operation
     multicore_launch_core1(core1Entry);
 
+    xlog_debug("Entering main loop");
     // main loop, runs forever, handles all communication in this loop
     while (1)
     {
@@ -243,7 +249,20 @@ void core1Entry()
 
         if (_reg.config->bits.freeRun)
         {
-            device.update();
+            try
+            {
+                device.update();
+            }
+            catch (const std::exception &e)
+            {
+                xlog_error("Exception in device update: " << e.what());
+                _reg.errorSet(ERROR_MASK_SENSOR_FAULT);
+            }
+            catch (...)
+            {
+                xlog_error("Unknown exception in device update");
+                _reg.errorSet(ERROR_MASK_SENSOR_FAULT);
+            }
         }
 
         { // scope for json output
@@ -266,13 +285,21 @@ void core1Entry()
         cycleDuration = endOfCycle - startOfCycle;
 
         // calculate net cycle time as moving average
-        *_reg.netCycleTimeUs = static_cast<uint32_t>(0.9 * *_reg.netCycleTimeUs) + static_cast<uint32_t>(0.1 * static_cast<uint32_t>(cycleDuration)); // TODO: Remove this - not necessary
+        *_reg.netCycleTimeUs = cycleDuration;
 
         // calculate remaining sleep time
         sleepFor = *_reg.desiredCycleTimeUs - cycleDuration;
+        xlog_debug("Cycle duration: " << cycleDuration << "us, sleep for: " << sleepFor << "us");
+
+        uint32_t heap_tot, heap_free, heap_used;
+        heap_tot = getTotalHeap();
+        heap_free = getFreeHeap();
+        heap_used = getUsedHeap();
+
+        xlog_debug("Heap: " << heap_tot / 1024 << "kiB, free: " << heap_free / 1024 << "kiB, used: " << heap_used / 1024 << "kiB");
 
         // sleep for the remaining time
-        if (sleepFor > 0)
+        if (sleepFor > 0 && sleepFor < *_reg.desiredCycleTimeUs)
         {
             core1idle = true;
             sleep_us(sleepFor);
@@ -282,6 +309,7 @@ void core1Entry()
         else
         {
             _reg.errorSet(ERROR_MASK_SENSOR_OVERLOAD);
+            xlog_debug("Cycle overrun: " << sleepFor << "us");
         }
     }
 #endif // __TIGHTLOOP
