@@ -2,6 +2,7 @@
 #define __LIS2DW12_HPP
 
 #include "Sensors/Sensor.hpp"
+#include "Utils/FFT.hpp"
 
 namespace Xerxes
 {
@@ -150,6 +151,10 @@ namespace Xerxes
 
         constexpr static size_t N_SAMPLES = 1024;
         constexpr static uint16_t FREQ = 200;
+
+        // must be a vector because of FFT algorithm requirements - resizing is not allowed in array
+        std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
+        std::vector<float> *ampls = new std::vector<float>(N_SAMPLES);
 
     protected:
         // typedef Sensor as super class for easier access

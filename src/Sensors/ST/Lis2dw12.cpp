@@ -3,7 +3,6 @@
 #include <iostream>
 #include <sstream>
 #include "Utils/Various.hpp"
-#include "Utils/FFT.hpp"
 
 namespace Xerxes
 {
@@ -109,16 +108,20 @@ namespace Xerxes
 
     void LIS2::update()
     {
-        std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
-        std::vector<float> *ampls = new std::vector<float>(N_SAMPLES);
+        xlog_debug("LIS2 update start");
 
         auto time_start = time_us_64();
         uint32_t drdyctr = 0;
+        ptot->clear();
+        ampls->clear();
+        ptot->resize(N_SAMPLES);
+        ampls->resize(N_SAMPLES);
 
+        xlog_debug("Gathering " << N_SAMPLES << " samples");
         for (size_t i = 0; i < N_SAMPLES; i++)
         {
             drdyctr = 0;
-            while (!dataReady())
+            while (!dataReady() && drdyctr < 1000) // wait for data ready signal for max 100ms
             {
                 sleep_us(1);
                 drdyctr++;
@@ -144,11 +147,13 @@ namespace Xerxes
             *_reg->pv0 = xf;
             *_reg->pv1 = yf;
             *_reg->pv2 = zf;
+            xlog_trace("XYZ values: " << xf << ", " << yf << ", " << zf << "[g]");
 
             float tot = sqrt(xf * xf + yf * yf + zf * zf);
             ampls->at(i) = tot - 1; // -1 to remove DC component
 
             ptot->at(i) = cf(tot - 1, 0); // -1 to remove DC component
+            xlog_trace("g total: " << tot << "[g]");
 
             gpio_put(USR_LED_PIN, 0);
 
@@ -158,7 +163,6 @@ namespace Xerxes
 
         auto time_end = time_us_64();
         xlog_debug("LIS2 update took: " << (time_end - time_start) / 1000 << "ms");
-        xlog_debug("Used heap: " << std::getUsedHeap() / 1024 << "kiB");
 
         auto stddev = stddev_signal(ptot);
         xlog_debug("Stddev: " << stddev);
@@ -167,6 +171,7 @@ namespace Xerxes
 
         xlog_debug("FFT done, swaping phase for frequency bins.");
         phase_to_freq(ptot, FREQ);
+        xlog_debug("Rectifying FFT output");
         rectify_fft_output(ptot);
 
         xlog_debug("Removing second half of the spectrum - it is a mirror image of the first half");
@@ -177,8 +182,9 @@ namespace Xerxes
         xlog_info("Done, printing");
         print_fft_output(ptot, FREQ, 32);
 #endif // NDEBUG
-
+        xlog_debug("Removing DC component");
         ptot->at(0) = cf(0, 0); // remove DC component
+        xlog_debug("Calculating carrier frequency");
         float carrier = carrier_freq(ptot, 5);
         xlog_info("Carrier frequency: " << carrier << "Hz");
 
@@ -195,7 +201,7 @@ namespace Xerxes
         xlog_info("Done, printing");
         print_fft_output(ptot, FREQ, 32);
 #endif // !NDEBUG
-
+        xlog_debug("Reading temperature register");
         uint8_t t_l = readRegister(REG::OUT_T_L);
         uint8_t t_h = readRegister(REG::OUT_T_H);
         int16_t ti = (int16_t)(t_h << 4 | t_l >> 4);
@@ -203,6 +209,7 @@ namespace Xerxes
         xlog_info("Temperature: " << tf);
         *_reg->pv3 = tf;
 
+        xlog_debug("Data ready, storing in message buffer");
         // store sorted FFT output in message buffer
         float *data = (float *)(_reg->message);
 
@@ -237,9 +244,7 @@ namespace Xerxes
         *_reg->av2 = ptot->at(2).real(); // magnitude
         *_reg->av3 = ptot->at(3).real(); // magnitude
         */
-
-        delete ptot;
-        delete ampls;
+        xlog_debug("LIS2 update end, releasing allocated memory");
 
         // super::update();
     }
@@ -278,7 +283,7 @@ namespace Xerxes
         {
             xlog_error("LIS2 readRegister failed");
         }
-        xlog_trace("LIS2 readRegister: 0x" << std::hex << (int)reg << ", val: " << (int)data << std::dec);
+        // xlog_trace("LIS2 readRegister: 0x" << std::hex << (int)reg << ", val: " << (int)data << std::dec);
 
         return data;
     }
@@ -301,7 +306,7 @@ namespace Xerxes
             return false;
         }
 
-        xlog_trace("LIS2 writeRegister: 0x" << std::hex << (int)reg << ", val: " << (int)val << std::dec);
+        // xlog_trace("LIS2 writeRegister: 0x" << std::hex << (int)reg << ", val: " << (int)val << std::dec);
 
         return true;
     }
