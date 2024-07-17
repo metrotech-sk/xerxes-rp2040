@@ -104,6 +104,11 @@ namespace Xerxes
     {
         spi_deinit(spi0);
         gpio_set_dir(SPI0_CSN_PIN, GPIO_IN);
+
+        delete ptot;
+        delete ampls;
+        delete frequencies;
+        delete amplitudes;
     }
 
     void LIS2::update()
@@ -116,6 +121,15 @@ namespace Xerxes
         ampls->clear();
         ptot->resize(N_SAMPLES);
         ampls->resize(N_SAMPLES);
+
+        // erase amplitudes with zeros:
+        std::fill(amplitudes->begin(), amplitudes->end(), 0);
+
+        if (whoami() != 0x44)
+        {
+            xlog_error("LIS2 whoami failed");
+            throw std::runtime_error("LIS2 sensor not connected");
+        }
 
         xlog_debug("Gathering " << N_SAMPLES << " samples");
         for (size_t i = 0; i < N_SAMPLES; i++)
@@ -178,14 +192,14 @@ namespace Xerxes
         truncate_fft_output(ptot);
         xlog_debug("Vec size: " << ptot->size() << ", FREQ: " << FREQ << "Hz");
 
-#ifndef NDEBUG // debug only
+#if LOG_LEVEL >= LOG_LEVEL_DEBUG // print only in debug mode
         xlog_info("Done, printing");
         print_fft_output(ptot, FREQ, 32);
 #endif // NDEBUG
         xlog_debug("Removing DC component");
         ptot->at(0) = cf(0, 0); // remove DC component
         xlog_debug("Calculating carrier frequency");
-        float carrier = carrier_freq(ptot, 5);
+        carrier = carrier_freq(ptot, 5);
         xlog_info("Carrier frequency: " << carrier << "Hz");
 
         // calculate max amplitude
@@ -194,10 +208,16 @@ namespace Xerxes
         max_amplitude = max_amplitude; // remove DC component
         xlog_info("Max amplitude: " << max_amplitude << "g, " << max_amplitude * 9.81 << "m.s^-2");
 
+        for (size_t i = 0; i < N_SAMPLES / 2; i++)
+        {
+            frequencies->at(i) = ptot->at(i).imag();
+            amplitudes->at(i) = ptot->at(i).real();
+        }
+
         xlog_debug("Sorting FFT output");
         sort_fft_output(ptot); // around 40ms per 2048 samples
 
-#ifndef NDEBUG
+#if LOG_LEVEL >= LOG_LEVEL_INFO
         xlog_info("Done, printing");
         print_fft_output(ptot, FREQ, 32);
 #endif // !NDEBUG
@@ -224,26 +244,6 @@ namespace Xerxes
         data[60] = carrier;
         data[61] = max_amplitude;
 
-#ifndef NDEBUG
-        // print data to console for debugging
-        // for (size_t i = 0; i < 64; i += 2) // 256bytes / 4bpf = 64 floats
-        // {
-        //     std::cout << data[i] << ", " << data[i + 1] << std::endl;
-        // }
-#endif // NDEBUG
-
-        /*
-        // store top 4 frequencies in pv/av registers
-        *_reg->pv0 = ptot->at(0).imag(); // frequency
-        *_reg->pv1 = ptot->at(1).imag(); // frequency
-        *_reg->pv2 = ptot->at(2).imag(); // frequency
-        *_reg->pv3 = ptot->at(3).imag(); // frequency
-
-        *_reg->av0 = ptot->at(0).real(); // magnitude
-        *_reg->av1 = ptot->at(1).real(); // magnitude
-        *_reg->av2 = ptot->at(2).real(); // magnitude
-        *_reg->av3 = ptot->at(3).real(); // magnitude
-        */
         xlog_debug("LIS2 update end, releasing allocated memory");
 
         // super::update();
@@ -257,7 +257,39 @@ namespace Xerxes
         ss << "  \"y\":" << *_reg->pv1 << ",\n";
         ss << "  \"z\":" << *_reg->pv2 << ",\n";
         ss << "  \"t\":" << *_reg->pv3 << ",\n";
-        ss << "  }" << std::endl;
+        ss << "  \"carrier\":" << carrier << ",\n";
+        ss << "  \"fft\": {\n";
+        if (carrier > 0)
+        {
+            ss << "    \"frequencies\": [";
+            for (size_t i = 0; i < N_SAMPLES / 2; i++)
+            {
+                ss << frequencies->at(i);
+                if (i < N_SAMPLES / 2 - 1)
+                {
+                    ss << ", ";
+                }
+            }
+            ss << "],\n";
+            ss << "    \"amplitudes\": [";
+            for (size_t i = 0; i < N_SAMPLES / 2; i++)
+            {
+                ss << amplitudes->at(i);
+                if (i < N_SAMPLES / 2 - 1)
+                {
+                    ss << ", ";
+                }
+            }
+            ss << "]\n";
+        }
+        else
+        {
+            ss << "    \"frequencies\": [],\n";
+            ss << "    \"amplitudes\": []\n";
+        }
+
+        ss << "  }\n";
+        ss << "}" << std::endl;
         return ss.str();
     }
 

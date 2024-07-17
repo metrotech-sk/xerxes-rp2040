@@ -156,6 +156,11 @@ namespace Xerxes
         std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
         std::vector<float> *ampls = new std::vector<float>(N_SAMPLES);
 
+        std::array<float, N_SAMPLES / 2> *frequencies = new std::array<float, N_SAMPLES / 2>;
+        std::array<float, N_SAMPLES / 2> *amplitudes = new std::array<float, N_SAMPLES / 2>;
+
+        float carrier;
+
     protected:
         // typedef Sensor as super class for easier access
         typedef Sensor super;
