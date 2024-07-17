@@ -2,7 +2,6 @@
 #define __VARIOUS_HPP
 
 #include <bits/stdc++.h>
-#include <malloc.h>
 
 namespace std
 {
@@ -30,15 +29,15 @@ namespace std
     template <typename T>
     void sort_fft_output(vector<complex<T>> *vec);
 
-    uint32_t getTotalHeap(void);
-
-    uint32_t getFreeHeap(void);
-
-    uint32_t getUsedHeap(void);
-
     template <typename T>
     T stddev_signal(const vector<complex<T>> *vec);
 }
+
+uint32_t getTotalHeap(void);
+
+uint32_t getFreeHeap(void);
+
+uint32_t getUsedHeap(void);
 
 #include "Various.tpp"
 

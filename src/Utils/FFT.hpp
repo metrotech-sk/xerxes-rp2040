@@ -1,3 +1,5 @@
+#pragma once
+
 #include <bits/stdc++.h>
 
 const float PI = acos(-1);
@@ -14,5 +16,5 @@ namespace Xerxes
 
     void truncate_fft_output(std::vector<cf> *vec);
 
-    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours = 0);
+    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours);
 }

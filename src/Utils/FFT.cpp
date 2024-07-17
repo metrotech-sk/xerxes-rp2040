@@ -57,7 +57,7 @@ namespace Xerxes
         vec->resize(vec->size() / 2);
     }
 
-    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours)
+    float carrier_freq(std::vector<cf> *vec, uint16_t n_neighbours = 0)
     {
         float max = 0;
         size_t max_i = 0;
