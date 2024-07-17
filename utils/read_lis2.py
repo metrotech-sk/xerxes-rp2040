@@ -14,9 +14,37 @@ import sys
 import time
 import struct
 
-from read_pvs import leaf, args, log, port
+from read_pvs import XR, args, log, port, Leaf
 from xerxes_protocol import memory
 import signal
+
+
+class Accelerometer(Leaf):
+    @property
+    def fft(self):
+
+        # read message buffer from sensor
+        payload = self.read_reg_net(memory.MESSAGE_OFFSET, 128)
+        payload += self.read_reg_net(memory.MESSAGE_OFFSET + 128, 128)
+        # unpack 64 floats into list:
+        vals = struct.unpack("64f", payload)
+        data = {}
+        data["spectrum"] = []
+        for i in range(0, 60, 2):
+            f = {
+                "f": vals[i],
+                "a": vals[i + 1],
+            }
+            data["spectrum"].append(f)
+        data["main"] = {
+            "f": vals[60],
+            "a": vals[61],
+        }
+        return data
+
+
+# create Leaf object
+leaf = Accelerometer(args.address, XR)
 
 
 def on_ctrl_z(_signum, _frame):
