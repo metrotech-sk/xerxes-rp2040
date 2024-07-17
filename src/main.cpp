@@ -272,7 +272,7 @@ void core1Entry()
             ss << "{" << endl;
             ss << "\"timestamp\":" << timestamp << "," << endl;
             ss << "\"netCycleTimeUs\":" << *_reg.netCycleTimeUs << "," << endl;
-            ss << "\"errors\": 0b" << bitset<32>(*_reg.error) << ",\n";
+            ss << "\"errors\":" << (int)(*_reg.error) << ",\n";
 
             // ss device values in json format
             ss << "\"device\":" << device.getJson() << endl;
