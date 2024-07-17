@@ -9,11 +9,11 @@
 #include <cstdlib>
 #include <cstring>
 
-// log level is set in CMakeLists.txt
-// #define _LOG_LEVEL 1 = ERROR
-// #define _LOG_LEVEL 2 = WARNING
-// #define _LOG_LEVEL 3 = INFO
-// #define _LOG_LEVEL 4 = DEBUG
+#define LOG_LEVEL_TRACE 5
+#define LOG_LEVEL_DEBUG 4
+#define LOG_LEVEL_INFO 3
+#define LOG_LEVEL_WARNING 2
+#define LOG_LEVEL_ERROR 1
 
 // macro to strip file path from __FILE__
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
