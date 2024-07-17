@@ -1,6 +1,8 @@
 #include "RS485.hpp"
 #include "Utils/Log.h"
 #include "Utils/Gpio.hpp"
+#include <sstream>
+#include <iomanip>
 
 namespace Xerxes
 {
@@ -116,6 +118,20 @@ namespace Xerxes
                 {
                     // successfully received whole message
                     xlog_dbg("Successfully received packet: " << incomingMessage.size() << " bytes");
+
+#if LOG_LEVEL >= LOG_LEVEL_TRACE // if trace is enabled then print the received packet
+                    std::stringstream ss;
+                    ss << std::hex;
+                    for (auto const &c : incomingMessage)
+                    {
+                        ss << (int)c << " ";
+                    }
+                    ss << std::dec;
+                    xlog_trace("Packet: ");
+                    printf(ss.str().c_str());
+                    printf("\n");
+#endif // LOG_LEVEL
+
                     return true;
                 }
                 else
