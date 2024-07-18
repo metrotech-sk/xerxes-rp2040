@@ -135,9 +135,9 @@ namespace Xerxes
         for (size_t i = 0; i < N_SAMPLES; i++)
         {
             drdyctr = 0;
-            while (!dataReady() && drdyctr < 1000) // wait for data ready signal for max 100ms
+            while (!dataReady() && drdyctr < 1000) // wait for data ready signal for max 10ms
             {
-                sleep_us(1);
+                busy_wait_us_32(10);
                 drdyctr++;
             }
 
