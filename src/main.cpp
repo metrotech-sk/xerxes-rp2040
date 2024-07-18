@@ -234,7 +234,7 @@ void core1Entry()
         device.update();
     }
 
-#else  // __TIGHTLOOP
+#else // __TIGHTLOOP
     // core1 mainloop
     while (true)
     {
@@ -291,12 +291,14 @@ void core1Entry()
         sleepFor = *_reg.desiredCycleTimeUs - cycleDuration;
         xlog_debug("Cycle duration: " << cycleDuration << "us, sleep for: " << sleepFor << "us");
 
+#if LOG_LEVEL >= LOG_LEVEL_DEBUG
         uint32_t heap_tot, heap_free, heap_used;
         heap_tot = getTotalHeap();
         heap_free = getFreeHeap();
         heap_used = getUsedHeap();
 
         xlog_debug("Heap: " << heap_tot / 1024 << "kiB, free: " << heap_free / 1024 << "kiB, used: " << heap_used / 1024 << "kiB");
+#endif // LOG_LEVEL >= LOG_LEVEL_DEBUG
 
         // sleep for the remaining time
         if (sleepFor > 0 && sleepFor < *_reg.desiredCycleTimeUs)
