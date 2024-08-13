@@ -35,6 +35,14 @@ make -j 16 install
 
 ## Other remarks
 ### low latency USB Serial
-```bash
+```shell
 echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer  # change ttyUSB0 for your device
+```
+
+### Using Udev Rules under /etc/udev/rules.d/50-custom.rules:
+```shell
+KERNEL=="tty[A-Z]*[0-9]|pppox[0-9]*|ircomm[0-9]*|noz[0-9]*|rfcomm[0-9]*", GROUP="dialout"
+
+# USB latency rules
+ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
 ```

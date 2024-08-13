@@ -16,6 +16,7 @@ import argparse
 from serial import Serial
 import time
 import logging
+import struct
 
 from xerxes_protocol import (
     XerxesRoot,
@@ -136,12 +137,10 @@ if __name__ == "__main__":
 
     while True:
         try:
-            pv0, pv1, pv2, pv3 = (
-                leaf.pv0,
-                leaf.pv1,
-                leaf.pv2,
-                leaf.pv3,
-            )
+            tstart = time.perf_counter()
+            payload = leaf.read_reg_net(memory.PV0_OFFSET, 4 * 4)
+            vals = struct.unpack("4f", payload)
+            pv0, pv1, pv2, pv3 = vals
             if args.message:
                 # read message buffer from sensor
                 payload = leaf.read_reg_net(memory.MESSAGE_OFFSET, 128)
@@ -157,7 +156,11 @@ if __name__ == "__main__":
             )
             if args.history:
                 print()
-            time.sleep(args.interval / 1000)
+
+            tcycle = time.perf_counter() - tstart
+            to_sleep = (args.interval / 1000) - tcycle
+            if to_sleep > 0:
+                time.sleep(to_sleep)
         except KeyboardInterrupt:
             print("Exiting...")
             break
