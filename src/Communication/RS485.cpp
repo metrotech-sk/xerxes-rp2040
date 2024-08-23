@@ -55,12 +55,7 @@ namespace Xerxes
         // check if the packet is in fifo buffer
         uint8_t nextVal = 0;
 
-#ifdef NDEBUG
         uint64_t tout = time_us_64() + timeoutUs;
-#else
-        absolute_time_t tout;
-        tout._private_us_since_boot = time_us_64() + timeoutUs;
-#endif // NDEBUG
 
         uint8_t chks = Xerxes::SOH;
 

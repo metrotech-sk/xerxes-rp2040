@@ -1,5 +1,6 @@
 #include "Utils/Gpio.hpp"
 #include "pico/stdlib.h"
+#include "Hardware/Board/xerxes_rp2040.h"
 
 namespace Xerxes
 {
