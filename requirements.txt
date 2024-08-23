@@ -1,0 +1,11 @@
+coverage==7.6.1
+iniconfig==2.0.0
+markdown-it-py==3.0.0
+mdurl==0.1.2
+packaging==24.1
+pluggy==1.5.0
+Pygments==2.18.0
+pyserial==3.5
+pytest==8.3.2
+rich==13.7.1
+xerxes-protocol==1.4.5
