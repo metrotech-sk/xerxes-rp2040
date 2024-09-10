@@ -33,6 +33,14 @@ parser.add_argument(
     help="address of Xerxes Cutter device, default is 0",
 )
 parser.add_argument(
+    "-b",
+    "--baudrate",
+    metavar="BAUDRATE",
+    type=int,
+    default=115200,
+    help="serial port baudrate",
+)
+parser.add_argument(
     "-d", "--debug", action="store_true", help="enable debug output"
 )
 parser.add_argument(
@@ -107,7 +115,7 @@ def test_leaf(leaf: Leaf) -> str:
 
 
 XN = XerxesNetwork(port)
-XN.init(timeout=args.timeout)
+XN.init(baudrate=args.baudrate, timeout=args.timeout)
 
 # create XerxesRoot object
 XR = XerxesRoot(0xFE, XN)
