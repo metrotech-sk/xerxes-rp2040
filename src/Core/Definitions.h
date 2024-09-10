@@ -24,12 +24,6 @@
 #define RING_BUFFER_LEN 100
 #endif // !RING_BUFFER_LEN
 
-/* config masks */
-/* If true use free run, if false: wait for sync packet */
-#define MASK_CONFIG_FREE_RUN 1 << 0
-/* if true, enable automatic calculation of the statistics */
-#define MASK_CONFIG_CALC_STATS 1 << 1
-
 /* Default values */
 #ifndef DEFAULT_CYCLE_TIME_US
 #define DEFAULT_CYCLE_TIME_US 10000 // 10 ms
