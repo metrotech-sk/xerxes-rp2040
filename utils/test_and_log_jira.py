@@ -76,6 +76,12 @@ parser.add_argument(
 parser.add_argument(
     "-l", "--link", metavar="TASK", type=str, help="link to existing Jira task"
 )
+parser.add_argument(
+    "--description",
+    metavar="DESCRIPTION",
+    type=str,
+    help="description of the task",
+)
 
 
 args = parser.parse_args()
@@ -165,6 +171,8 @@ device_info["gains"] = {
 }
 
 device_info = json.dumps(device_info, indent=4)
+if args.description:
+    device_info = args.description + "\n\n" + device_info
 
 log.debug(f"Device info: {device_info}")
 

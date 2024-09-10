@@ -14,7 +14,7 @@ def main():
         description="Discover Xerxes devices on the network"
     )
     parser.add_argument(
-        "-t", "--timeout", type=float, default=0.1, help="timeout in seconds"
+        "-t", "--timeout", type=float, default=0.021, help="timeout in seconds"
     )
     parser.add_argument(
         "-d", "--debug", action="store_true", help="enable debug logging"
@@ -44,63 +44,21 @@ def main():
 
     cont = True
     while cont:
-        leaves = []
-        if args.address == 0xFF:
-            for i in range(32):
-                try:
-                    leaf = Leaf(i, XR)
-                    pr = leaf.ping()
-                    log.debug(f"Found leaf {i} at address {i}")
-                    log.debug(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
-                    leaves.append(leaf)
-                except TimeoutError:
-                    log.debug(f"Leaf {i} not found")
-                except ValueError:
-                    log.warning(f"Error reading values from leaf {i}")
-                except KeyboardInterrupt:
-                    cont = False
-                    break
-        else:
+        log.info("Discovering devices...")
+        for i in range(32):
             try:
-                leaf = Leaf(args.address, XR)
+                leaf = Leaf(i, XR)
                 pr = leaf.ping()
-                log.debug(
-                    f"Found leaf {args.address} at address {args.address}"
-                )
-                log.debug(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
-                leaves.append(leaf)
+                log.info(f"Found leaf {i} at address {i}")
+                log.info(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
             except TimeoutError:
-                log.debug(f"Leaf {args.address} not found")
+                log.debug(f"Leaf {i} not found")
             except ValueError:
-                log.warning(f"Error reading values from leaf {args.address}")
-            except KeyboardInterrupt:
-                cont = False
-                break
-
-        # clear console:
-        print("\033[H\033[J")
-
-        for l in leaves:
-            try:
-                print(leaf.info)
-                print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], pv0-3: {l.pv0:2.3f}, {l.pv1:2.3f}, {l.pv2:2.3f}, {l.pv3:2.3f}"
-                )
-                print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], offset_pv0-3: {l.offset_pv0:2.3f}, {l.offset_pv1:2.3f}, {l.offset_pv2:2.3f}, {l.offset_pv3:2.3f}"
-                )
-                print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], gain_pv0-3: {l.gain_pv0:2.3f}, {l.gain_pv1:2.3f}, {l.gain_pv2:2.3f}, {l.gain_pv3:2.3f}"
-                )
-            except TimeoutError:
-                log.warning(f"Leaf {l.address} not found")
-            except ValueError:
-                log.warning(f"Error reading values from leaf {l.address}")
+                log.warning(f"Error reading values from leaf {i}")
             except KeyboardInterrupt:
                 cont = False
                 break
         time.sleep(0.5)
-        log.debug(f"Found {leaves}")
 
     serial.close()
 
