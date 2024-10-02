@@ -70,8 +70,14 @@ if __name__ == "__main__":
                 # read message buffer from sensor
                 payload = leaf.read_reg_net(memory.MESSAGE_OFFSET, 128)
                 payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 128, 128)
-                # unpack 64 floats into list:
-                data = struct.unpack("64f", payload)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 256, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 384, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 512, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 640, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 768, 128)
+                payload += leaf.read_reg_net(memory.MESSAGE_OFFSET + 896, 128)
+
+                data = struct.unpack("256f", payload)
 
                 # clear screen:
                 print("\033[H\033[J")
@@ -85,8 +91,7 @@ if __name__ == "__main__":
 
             print(
                 f"PV0: {pv0:.4f}, PV1: {pv1:.4f}, PV2: {pv2:.4f}, PV3: {pv3:.4f}, Sum: {amplitude:.4f}, dt: {dt:.4f}s"
-                + " " * 10,
-                end="\r",
+                + " " * 10
             )
             if args.history:
                 print()

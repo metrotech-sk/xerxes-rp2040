@@ -43,6 +43,10 @@ namespace Xerxes
         gpio_init(SPI0_CSN_PIN);
         gpio_set_dir(SPI0_CSN_PIN, GPIO_OUT);
 
+        // Initialize heap-allocated structures in the constructor or init
+        frequencies = new std::array<float, N_SAMPLES / 2>; // Allocate on the heap
+        amplitudes = new std::array<float, N_SAMPLES / 2>;  // Allocate on the heap
+
         // wait for sensor to power up
         sleep_ms(20);
         if (whoami() != 0x44)
@@ -105,10 +109,22 @@ namespace Xerxes
         spi_deinit(spi0);
         gpio_set_dir(SPI0_CSN_PIN, GPIO_IN);
 
-        delete ptot;
-        delete ampls;
-        delete frequencies;
-        delete amplitudes;
+        // Ensure that memory is properly freed in stop
+        if (ptot)
+            delete ptot;
+        ptot = nullptr;
+
+        if (ampls)
+            delete ampls;
+        ampls = nullptr;
+
+        if (frequencies)
+            delete frequencies;
+        frequencies = nullptr;
+
+        if (amplitudes)
+            delete amplitudes;
+        amplitudes = nullptr;
     }
 
     void LIS2::update()
@@ -117,8 +133,10 @@ namespace Xerxes
 
         auto time_start = time_us_64();
         uint32_t drdyctr = 0;
-        ptot->clear();
-        ampls->clear();
+
+        ptot = new std::vector<cf>(N_SAMPLES);     // Allocate on the heap
+        ampls = new std::vector<float>(N_SAMPLES); // Allocate on the heap
+
         ptot->resize(N_SAMPLES);
         ampls->resize(N_SAMPLES);
 
@@ -181,6 +199,8 @@ namespace Xerxes
         auto stddev = stddev_signal(ptot);
         xlog_debug("Stddev: " << stddev);
 
+        xlog_debug("Memory after measurement: " << getFreeHeap() << "B free, " << getUsedHeap() << "B used, " << getTotalHeap() << "B total");
+
         fft(ptot); // around 300ms per 2048 samples
 
         xlog_debug("FFT done, swaping phase for frequency bins.");
@@ -233,7 +253,7 @@ namespace Xerxes
         // store sorted FFT output in message buffer
         float *data = (float *)(_reg->message);
 
-        for (size_t i = 0; i < 60; i += 2) // 256bytes / 4bpf = 64 floats
+        for (size_t i = 0; i < MESSAGE_SIZE / 4; i += 2) // 1024 bytes / 4bpf = 256 floats
         {
             data[i] = ptot->at(i / 2).imag();     // frequency
             data[i + 1] = ptot->at(i / 2).real(); // magnitude
@@ -241,10 +261,16 @@ namespace Xerxes
         xlog_debug("Data stored in message buffer");
 
         // add carry to message buffer
-        data[60] = carrier;
-        data[61] = max_amplitude;
+        data[254] = carrier;
+        data[255] = max_amplitude;
+        xlog_debug("Carrier and max amplitude stored in message buffer");
+        xlog_debug("Carrier: " << data[254] << "Hz, max amplitude: " << data[255] << "g");
 
         xlog_debug("LIS2 update end, releasing allocated memory");
+
+        delete ptot;
+        delete ampls;
+        xlog_debug("Memory after delete: " << getFreeHeap() << "B free, " << getUsedHeap() << "B used, " << getTotalHeap() << "B total");
 
         // super::update();
     }

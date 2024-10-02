@@ -149,15 +149,14 @@ namespace Xerxes
 
         const bool dataReady() const;
 
-        constexpr static size_t N_SAMPLES = 1024;
+        constexpr static size_t N_SAMPLES = 4096;
         constexpr static uint16_t FREQ = 200;
 
         // must be a vector because of FFT algorithm requirements - resizing is not allowed in array
-        std::vector<cf> *ptot = new std::vector<cf>(N_SAMPLES);
-        std::vector<float> *ampls = new std::vector<float>(N_SAMPLES);
-
-        std::array<float, N_SAMPLES / 2> *frequencies = new std::array<float, N_SAMPLES / 2>;
-        std::array<float, N_SAMPLES / 2> *amplitudes = new std::array<float, N_SAMPLES / 2>;
+        std::vector<cf> *ptot;
+        std::vector<float> *ampls;
+        std::array<float, N_SAMPLES / 2> *frequencies;
+        std::array<float, N_SAMPLES / 2> *amplitudes;
 
         float carrier;
 
