@@ -100,9 +100,7 @@ parser.add_argument(
 
 
 # whether to show history or not in output formating
-parser.add_argument(
-    "--history", help="show history in output", action="store_true"
-)
+parser.add_argument("--history", help="show history in output", action="store_true")
 
 args = parser.parse_args()
 
@@ -111,9 +109,7 @@ if args.debug:
 else:
     level = logging.getLevelName(args.loglevel)
 
-logging.basicConfig(
-    level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 
 # create XerxesNetwork object
@@ -150,8 +146,7 @@ if __name__ == "__main__":
             dt = time.perf_counter() - time_start
             time_start = time.perf_counter()
             print(
-                f"PV0: {pv0:.4f} PV1: {pv1:.4f} PV2: {pv2:.4f} PV3: {pv3:.4f}, dt: {dt:.4f}s"
-                + " " * 10,
+                f"PV0: {pv0:.4f} PV1: {pv1:.4f} PV2: {pv2:.4f} PV3: {pv3:.4f}, dt: {dt:.4f}s" + " " * 10,
                 end="\r",
             )
             if args.history:

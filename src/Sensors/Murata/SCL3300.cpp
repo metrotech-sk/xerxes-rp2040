@@ -65,6 +65,13 @@ namespace Xerxes
         // call init sequence
         initSequence();
 
+        constexpr uint32_t ring_buf_len = 10;
+        // initialize ringbuffer with size of RING_BUFFER_LEN (defined in Definitions.h)
+        rbpv0 = StatisticBuffer<float>(ring_buf_len);
+        rbpv1 = StatisticBuffer<float>(ring_buf_len);
+        rbpv2 = StatisticBuffer<float>(ring_buf_len);
+        rbpv3 = StatisticBuffer<float>(ring_buf_len);
+
         // change sample rate to 10Hz
         *_reg->desiredCycleTimeUs = _sensorUpdateRateUs;
 
@@ -94,8 +101,8 @@ namespace Xerxes
         longToPacket(ExchangeBlock(CMD::Read_Status_Summary), packetT);
 
         // convert data to angles
-        *_reg->pv0 = static_cast<float>(getDegFromPacket(packetX));
-        *_reg->pv1 = static_cast<float>(getDegFromPacket(packetY));
+        *_reg->pv0 = (static_cast<float>(getDegFromPacket(packetX)) * *_reg->gainPv0) - *_reg->offsetPv0;
+        *_reg->pv1 = (static_cast<float>(getDegFromPacket(packetY)) * *_reg->gainPv1) - *_reg->offsetPv1;
         // pv2 = static_cast<float>(getDegFromPacket(packetZ));
 
         if (!packetX->DATA_H &&
@@ -117,7 +124,7 @@ namespace Xerxes
         }
         else
         {
-            *_reg->pv3 = temp;
+            *_reg->pv3 = (temp * *_reg->gainPv3) - *_reg->offsetPv3;
         }
 
         // if calcStat is true, update statistics

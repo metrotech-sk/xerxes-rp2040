@@ -40,9 +40,7 @@ parser.add_argument(
     default=115200,
     help="serial port baudrate",
 )
-parser.add_argument(
-    "-d", "--debug", action="store_true", help="enable debug output"
-)
+parser.add_argument("-d", "--debug", action="store_true", help="enable debug output")
 parser.add_argument(
     "-p",
     "--port",
@@ -73,9 +71,7 @@ parser.add_argument(
     type=str,
     help="create new Jira task if UUID not found with SUMMARY as summary",
 )
-parser.add_argument(
-    "-l", "--link", metavar="TASK", type=str, help="link to existing Jira task"
-)
+parser.add_argument("-l", "--link", metavar="TASK", type=str, help="link to existing Jira task")
 parser.add_argument(
     "--description",
     metavar="DESCRIPTION",
@@ -87,9 +83,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 level = logging.DEBUG if args.debug else logging.INFO
-logging.basicConfig(
-    level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=level, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 log = logging.getLogger(__name__)
 
 # create XerxesNetwork object
@@ -134,9 +128,7 @@ else:
         leaf = Leaf(i, XR)
         try:
             ping_reply = leaf.ping()
-            log.info(
-                f"Found leaf at address {i}[{hex(i)}], latency: {ping_reply.latency} ms"
-            )
+            log.info(f"Found leaf at address {i}[{hex(i)}], latency: {ping_reply.latency} ms")
             break
         except Exception as e:
             pass
@@ -173,6 +165,8 @@ device_info["gains"] = {
 device_info = json.dumps(device_info, indent=4)
 if args.description:
     device_info = args.description + "\n\n" + device_info
+
+log.debug(f"Device info: {device_info}")
 
 log.debug(f"Device info: {device_info}")
 
