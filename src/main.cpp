@@ -60,8 +60,10 @@ int main(void)
 
     // blink led for 10 ms - we are alive
     gpio_put(USR_LED_PIN, 1);
+    gpio_put(LED_COM_ACT_PIN, 1);
     sleep_ms(10);
     gpio_put(USR_LED_PIN, 0);
+    gpio_put(LED_COM_ACT_PIN, 0);
 
     // clear error register
     _reg.errorClear(0xFFFFFFFF);
@@ -72,26 +74,11 @@ int main(void)
         _reg.errorSet(ERROR_MASK_WATCHDOG_TIMEOUT);
     }
 
-    // check if user switch is on, if so, use usb uart
-    useUsb = gpio_get(USR_SW_PIN);
-
     // if user button is pressed, load default values a.k.a. FACTORY RESET
     if (!gpio_get(USR_BTN_PIN))
+    {
         userLoadDefaultValues();
-
-    if (useUsb)
-    {
-        // init usb uart
-        userInitUartDisabled();
-
-        while (!stdio_usb_connected()) // wait for usb connection
-        {
-            watchdog_update();
-        }
-        xlog_info("USB Connected");
-    }
-    else
-    {
+        useUsb = true;
         stdio_usb_init();
     }
 
@@ -115,7 +102,10 @@ int main(void)
 
     if (useUsb)
     {
-
+        while (!stdio_usb_connected()) // wait for usb connection
+        {
+            watchdog_update();
+        }
         cout << device.getInfoJson() << endl;
 
         // set to free running mode and calculate statistics for usb uart mode so we can see the values
@@ -164,7 +154,7 @@ int main(void)
         // send char if tx queue is not empty and uart is writable
         if (!queue_is_empty(&txFifo))
         {
-            ledComOn(); // set communication activity led
+            comOn(); // set communication activity led
             xlog_trace("got some data to process");
             uint txLen = queue_get_level(&txFifo);
             assert(txLen <= RX_TX_QUEUE_SIZE);
@@ -178,8 +168,11 @@ int main(void)
             }
             xlog_trace("Writing data to uart");
             // write char to bus, this will clear the interrupt
+            enableTX();
             uart_write_blocking(uart0, toSend, txLen);
-            ledComOff(); // clear communication activity led
+            uart_tx_wait_blocking(uart0);
+            comOff(); // clear communication activity led
+            disableTX();
         }
 
         if (queue_is_full(&txFifo) || queue_is_full(&rxFifo))

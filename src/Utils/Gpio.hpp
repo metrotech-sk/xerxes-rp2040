@@ -12,10 +12,16 @@ namespace Xerxes
     void ledBusyOff();
 
     /// @brief Turn on the communication LED
-    void ledComOn();
+    void comOn();
 
     /// @brief Turn off the communication LED
-    void ledComOff();
+    void comOff();
+
+    /// @brief Enable RS485 transceiver
+    void enableTX();
+
+    /// @brief Disable RS485 transceiver
+    void disableTX();
 } // namespace Xerxes
 
 #endif // __GPIO_HPP

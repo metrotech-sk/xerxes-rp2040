@@ -57,7 +57,7 @@ void userInitUart()
     // initialise RS485 enable pin and set it to high, this will enable the transceiver
     gpio_init(RS_EN_PIN);
     gpio_set_dir(RS_EN_PIN, GPIO_OUT);
-    gpio_put(RS_EN_PIN, true);
+    gpio_put(RS_EN_PIN, false); // set to low to enable receive
 
     // enable fifo for uart, each FIFO is 32 levels deep
     uart_set_fifo_enabled(uart0, true);
@@ -77,19 +77,16 @@ void userInitUart()
 void userInitGpio()
 {
     // initialize the user led and button pins
-    gpio_init(USR_SW_PIN);
     gpio_init(LED_COM_ACT_PIN);
     gpio_init(USR_LED_PIN);
     gpio_init(USR_BTN_PIN);
 
     gpio_set_drive_strength(USR_LED_PIN, GPIO_DRIVE_STRENGTH_2MA);
 
-    gpio_set_dir(USR_SW_PIN, GPIO_IN);
     gpio_set_dir(USR_LED_PIN, GPIO_OUT);
     gpio_set_dir(LED_COM_ACT_PIN, GPIO_OUT);
     gpio_set_dir(USR_BTN_PIN, GPIO_IN);
 
-    gpio_pull_up(USR_SW_PIN);
     gpio_pull_up(USR_BTN_PIN);
 }
 
@@ -130,19 +127,4 @@ void userInit()
     {
         userLoadDefaultValues();
     }
-}
-
-void userInitUartDisabled(void)
-{
-    // pull RX pin high so rx led is off
-    gpio_init(RS_RX_PIN);
-    gpio_init(RS_TX_PIN);
-
-    gpio_set_dir(RS_RX_PIN, GPIO_IN);
-    gpio_set_dir(RS_TX_PIN, GPIO_IN);
-
-    gpio_pull_up(RS_RX_PIN);
-    gpio_pull_up(RS_TX_PIN);
-
-    stdio_usb_init();
 }

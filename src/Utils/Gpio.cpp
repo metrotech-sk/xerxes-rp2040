@@ -14,13 +14,23 @@ namespace Xerxes
         gpio_put(USR_LED_PIN, 0);
     }
 
-    void ledComOn()
+    void comOn()
     {
         gpio_put(LED_COM_ACT_PIN, 1);
     }
 
-    void ledComOff()
+    void comOff()
     {
         gpio_put(LED_COM_ACT_PIN, 0);
+    }
+
+    void enableTX()
+    {
+        gpio_put(RS_EN_PIN, 1);
+    }
+
+    void disableTX()
+    {
+        gpio_put(RS_EN_PIN, 0);
     }
 } // namespace Xerxes
