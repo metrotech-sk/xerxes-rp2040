@@ -118,7 +118,7 @@ extern "C"
 // --- FLASH ---
 #define PICO_BOOT_STAGE2_CHOOSE_W25Q080 1
 
-#ifndef PICO_FLASH_SPI_CLKDIV
+#undef PICO_FLASH_SPI_CLKDIV
 /**
  * @brief divisor for SPI clock (default 4), must be divisible by 2
  *
@@ -127,7 +127,7 @@ extern "C"
  * @note Increasing this value will help with BOOTLOOPs, but will slow down the flash chip.
  */
 #define PICO_FLASH_SPI_CLKDIV __CLKDIV
-#endif // !PICO_FLASH_SPI_CLKDIV
+    // #endif // !PICO_FLASH_SPI_CLKDIV
 
 #ifndef PICO_XOSC_STARTUP_DELAY_MULTIPLIER
 #define PICO_XOSC_STARTUP_DELAY_MULTIPLIER 16

@@ -79,7 +79,6 @@ int main(void)
     {
         userLoadDefaultValues();
         useUsb = true;
-        stdio_usb_init();
     }
 
     watchdog_update();
