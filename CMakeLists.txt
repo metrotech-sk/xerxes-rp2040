@@ -34,6 +34,13 @@ execute_process(
 add_compile_definitions(__VERSION="${VERSION}")
 message("Version: ${VERSION}")
 
+execute_process(
+	COMMAND git describe
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE TAG
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 if(NOT DEFINED DEVICE_ADDRESS)
     set(DEVICE_ADDRESS 0)
 endif()
@@ -137,7 +144,7 @@ target_link_libraries(
 	xerxes-protocol
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE})
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG})
 
 # enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
@@ -149,6 +156,6 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # copy .UF2 binary to the RP2040
 install(
 	FILES
-	${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}.uf2
-	DESTINATION /media/$ENV{USER}/RPI-RP2/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}.uf2
+	${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG}.uf2
+	DESTINATION /media/$ENV{USER}/RPI-RP2/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG}.uf2
 )
