@@ -31,6 +31,7 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 add_compile_definitions(__VERSION="${VERSION}")
+message("Version: ${VERSION}")
 
 if(NOT DEFINED DEVICE_ADDRESS)
     set(DEVICE_ADDRESS 0)
