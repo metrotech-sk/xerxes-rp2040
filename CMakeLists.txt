@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 
+# this is the board we are using, we need to set this to use the correct board header and bootloader
+# the board file is: src/Hardware/Board/xerxes_rp2040.h
+set(PICO_BOARD "xerxes_rp2040")
+set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/Hardware/Board")
+
 # this must be first to set the correct toolchain
 include(pico_sdk_import.cmake)
 # We also need PICO EXTRAS
@@ -18,10 +23,6 @@ set(DEVICE_TYPES "SCL3300" "SCL3300a" "SCL3400" "AnalogInput" "DiscreteAnalog"
 "4DI4DO" "ABP" "hx711" "Encoder" "Cutter" "LightSound" "temperature" "lis2dw12" "LIS2") 
 set(DEVICE_TYPE_HINT "Possible options for DEVICE_TYPE: ${DEVICE_TYPES}")
 
-# this is the board we are using, we need to set this to use the correct board header and bootloader
-# the board file is: src/Hardware/Board/xerxes_rp2040.h
-set(PICO_BOARD "xerxes_rp2040")
-set(PICO_BOARD_HEADER_DIRS "${CMAKE_CURRENT_LIST_DIR}/src/Hardware/Board")
 
 # parse version and build number from git
 execute_process(
@@ -31,6 +32,14 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 add_compile_definitions(__VERSION="${VERSION}")
+message("Version: ${VERSION}")
+
+execute_process(
+	COMMAND git describe
+	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+	OUTPUT_VARIABLE TAG
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 if(NOT DEFINED DEVICE_ADDRESS)
     set(DEVICE_ADDRESS 0)
@@ -41,7 +50,7 @@ add_compile_definitions(__DEVICE_ADDRESS=${DEVICE_ADDRESS})
 
 # check if ${CLKDIV} is set and set it to 4 if not - necessary for some boards
 if(NOT DEFINED CLKDIV)
-	set(CLKDIV 4)
+	set(CLKDIV 8)
 endif()
 add_compile_definitions(__CLKDIV=${CLKDIV})
 
@@ -135,7 +144,7 @@ target_link_libraries(
 	xerxes-protocol
 )
 
-set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${DEVICE_TYPE})
+set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG})
 
 # enable usb output, disable uart output
 pico_enable_stdio_usb(${PROJECT_NAME} 1)
@@ -147,6 +156,6 @@ pico_add_extra_outputs(${PROJECT_NAME})
 # copy .UF2 binary to the RP2040
 install(
 	FILES
-	${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_TYPE}.uf2
-	DESTINATION /media/$ENV{USER}/RPI-RP2/${DEVICE_TYPE}.uf2
+	${CMAKE_CURRENT_BINARY_DIR}/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG}.uf2
+	DESTINATION /media/$ENV{USER}/RPI-RP2/${DEVICE_TYPE}_0x${DEVICE_ADDRESS}_${CMAKE_BUILD_TYPE}_${TAG}.uf2
 )
