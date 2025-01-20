@@ -135,7 +135,7 @@ namespace Xerxes
 
     class LIS2 : public Sensor
     {
-    private:
+    protected:
         // sensor specific values
         static constexpr uint8_t WHO_AM_I_VAL = 0x44;
 
@@ -160,7 +160,6 @@ namespace Xerxes
 
         float carrier;
 
-    protected:
         // typedef Sensor as super class for easier access
         typedef Sensor super;
 

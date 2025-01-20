@@ -20,7 +20,7 @@ set(PICO_CXX_ENABLE_EXCEPTIONS 1)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 set(DEVICE_TYPES "SCL3300" "SCL3300a" "SCL3400" "AnalogInput" "DiscreteAnalog" 
-"4DI4DO" "ABP" "hx711" "Encoder" "Cutter" "LightSound" "temperature" "lis2dw12" "LIS2") 
+"4DI4DO" "ABP" "hx711" "Encoder" "Cutter" "LightSound" "temperature" "lis2dw12" "LIS2" "lis2xy") 
 set(DEVICE_TYPE_HINT "Possible options for DEVICE_TYPE: ${DEVICE_TYPES}")
 
 

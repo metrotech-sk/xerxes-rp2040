@@ -253,7 +253,7 @@ namespace Xerxes
         // store sorted FFT output in message buffer
         float *data = (float *)(_reg->message);
 
-        for (size_t i = 0; i < MESSAGE_SIZE / 4; i += 2) // 1024 bytes / 4bpf = 256 floats
+        for (size_t i = 0; i < 256; i += 2) // 1024 bytes / 4bpf = 256 floats
         {
             data[i] = ptot->at(i / 2).imag();     // frequency
             data[i + 1] = ptot->at(i / 2).real(); // magnitude

@@ -83,6 +83,20 @@ int main(void)
 
     watchdog_update();
     device = __DEVICE_CLASS(&_reg);
+
+    if (useUsb)
+    {
+        while (!stdio_usb_connected()) // wait for usb connection
+        {
+            watchdog_update();
+        }
+        cout << device.getInfoJson() << endl;
+
+        // set to free running mode and calculate statistics for usb uart mode so we can see the values
+        _reg.config->bits.freeRun = 1;
+        _reg.config->bits.calcStat = 1;
+    }
+
     try
     {
         device.init();
@@ -98,19 +112,6 @@ int main(void)
         _reg.errorSet(ERROR_MASK_DEVICE_INIT);
     }
     watchdog_update();
-
-    if (useUsb)
-    {
-        while (!stdio_usb_connected()) // wait for usb connection
-        {
-            watchdog_update();
-        }
-        cout << device.getInfoJson() << endl;
-
-        // set to free running mode and calculate statistics for usb uart mode so we can see the values
-        _reg.config->bits.freeRun = 1;
-        _reg.config->bits.calcStat = 1;
-    }
 
     xlog_debug("Initializing UART");
     // init uart over RS485
