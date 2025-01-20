@@ -11,7 +11,7 @@ namespace Xerxes
     {
     protected:
         constexpr static size_t N_SAMPLES = 2048;
-        constexpr static uint16_t FREQ = 100;
+        constexpr static uint16_t FREQ = 200;
 
         // must be a vector because of FFT algorithm requirements - resizing is not allowed in array
         std::vector<cf> *ptot_x;

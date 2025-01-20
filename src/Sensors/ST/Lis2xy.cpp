@@ -255,38 +255,8 @@ namespace Xerxes
         ss << "  \"y\":" << *_reg->pv1 << ",\n";
         ss << "  \"z\":" << *_reg->pv2 << ",\n";
         ss << "  \"t\":" << *_reg->pv3 << ",\n";
-        ss << "  \"carrier\":" << carrier << ",\n";
-        ss << "  \"fft\": {\n";
-        if (carrier_x > 0)
-        {
-            ss << "    \"frequencies_x\": [";
-            for (size_t i = 0; i < N_SAMPLES / 2; i++)
-            {
-                ss << frequencies_x->at(i);
-                if (i < N_SAMPLES / 2 - 1)
-                {
-                    ss << ", ";
-                }
-            }
-            ss << "],\n";
-            ss << "    \"amplitudes_x\": [";
-            for (size_t i = 0; i < N_SAMPLES / 2; i++)
-            {
-                ss << amplitudes_x->at(i);
-                if (i < N_SAMPLES / 2 - 1)
-                {
-                    ss << ", ";
-                }
-            }
-            ss << "]\n";
-        }
-        else
-        {
-            ss << "    \"frequencies_x\": [],\n";
-            ss << "    \"amplitudes_x\": []\n";
-        }
-
-        ss << "  }\n";
+        ss << "  \"carrier_x\":" << carrier_x << ",\n";
+        ss << "  \"carrier_y\":" << carrier_y << "\n";
         ss << "}" << std::endl;
         return ss.str();
     }
