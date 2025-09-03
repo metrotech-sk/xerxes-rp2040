@@ -1,76 +1,207 @@
-# sensor-rp2040
+# Xerxes RP2040 Sensor Platform
+
+A comprehensive sensor firmware for RP2040 microcontroller supporting 20+ sensor types with RS485 communication using the Xerxes protocol.
+
 ## Overview
 
-Sensor RP2040 is a library of sensors for the RP2040 microcontroller using shield 
+The Xerxes RP2040 platform provides a unified firmware framework for industrial sensor applications. It features:
 
-## Installation
+- **Multi-sensor support**: 20+ sensor types from various manufacturers (Murata, Honeywell, ST Microelectronics)
+- **Dual-core architecture**: Core 0 handles communication, Core 1 processes sensor data
+- **RS485/UART communication**: Industrial-grade networking with Xerxes protocol
+- **Python utilities**: Device discovery, calibration, and data acquisition tools
+- **Real-time processing**: Configurable sampling rates with statistical analysis
+
+## Quick Start
+
+### Prerequisites
+- **Hardware**: RP2040-based Xerxes sensor board
+- **Software**: CMake, ARM GCC toolchain, Pico SDK
+- **Python**: Python 3.8+ with xerxes-protocol package
+
+### Build and Flash
 
 ```bash
-# clone this repository
-git clone ###
-cd sensor-rp2040
+# Clone repository with submodules
+git clone --recursive https://github.com/metrotech-sk/xerxes-rp2040.git
+cd xerxes-rp2040
 
-# create a debug/release build directory
-mkdir build-debug  # or build-release, change debug for release
-cd build-debug
+# Create build directory
+mkdir build && cd build
 
-cmake .. -DCMAKE_BUILD_TYPE=Debug -DSENSOR_TYPE=AI # or release, change AI for other sensor type
+# Configure for your sensor type (example: analog input)
+cmake .. -DCMAKE_BUILD_TYPE=Release -DDEVICE_TYPE=AnalogInput -DDEVICE_ADDRESS=1
 
-# put board to bootloader mode holding BOOTSEL button while pressing reset button
+# Build firmware
+make -j$(nproc)
 
-# build and upload firmware
-make -j 16 install
+# Flash: Put board in bootloader mode (hold BOOTSEL + reset)
+make install
 ```
 
-### Sensor types
+### Python Setup
 
-| Sensor type | Description                                                  | Manufacturer | Interface      |
-|-------------|--------------------------------------------------------------|--------------|----------------|
-| SCL3300     | 2 axis inclinometer, range +- 90°                            | Murata       | SPI            |
-| SCL3400     | 2 axis inclinometer, range +- 30°                            | Murata       | SPI            |
-| AI          | Analog input - 4 analog inputs                               | Generic      | Analog         |
-| AnalogInput | Same as "AI"                                                 | Generic      | Analog         |
-| 4DI4DO      | 4 digital inputs and 4 digital outputs                       | Generic      | Digital        |
-| ABP         | pressure sensor, range 0-60 mbar = 0-6 kPa (differential)    | Honeywell    | I2C/SPI        |
-| DEVID_TEMP_DS18B20    | Temperature sensor DS18B20                                   | Maxim         | 1-Wire         |
-| DEVID_TIER            | Tier sensor                                                  | Generic      | Digital        |
-| DEVID_ENC_1000PPR     | Encoder 1000 pulses per revolution                           | Generic      | Digital        |
-| DEVID_IO_3AI          | 3 analog inputs                                              | Generic      | Analog         |
-| DEVID_IO_4AI          | 4 analog inputs                                              | Generic      | Analog         |
-| DEVID_IO_4DI_4DO      | 4 digital inputs and 4 digital outputs                       | Generic      | Digital        |
-| DEVID_IO_8DI_8DO      | 8 digital inputs and 8 digital outputs                       | Generic      | Digital        |
-| DEVID_LIGHT_SOUND_POLLUTION | Light and sound pollution sensor                       | Generic      | Analog/Digital |
-| DEVID_PRESSURE_600MBAR | Pressure sensor, range 0-600 mbar                           | Generic      | I2C/SPI        |
-| DEVID_PRESSURE_60MBAR | Pressure sensor, range 0-60 mbar                             | Generic      | I2C/SPI        |
-| DEVID_STRAIN_24BIT    | Strain gauge sensor, 24-bit resolution                       | Generic      | Analog         |
-| DEVID_AIR_POL_CO_NOX_VOC | Air pollution sensor for CO, NOx, and VOC                 | Generic      | I2C/SPI        |
-| DEVID_AIR_POL_CO_NOX_VOC_PM | Air pollution sensor for CO, NOx, VOC, and PM          | Generic      | I2C/SPI        |
-| DEVID_AIR_POL_CO_NOX_VOC_PM_GPS | Air pollution sensor for CO, NOx, VOC, PM, and GPS | Generic      | I2C/SPI        |
-| DEVID_AIR_POL_PM      | Air pollution sensor for particulate matter                  | Generic      | I2C/SPI        |
-| DEVID_ANGLE_XY_30     | Angle sensor, XY plane, range +- 30°                         | Generic      | Analog/Digital |
-| DEVID_ANGLE_XY_90     | Angle sensor, XY plane, range +- 90°                         | Generic      | Analog/Digital |
-| DEVID_CUTTER          | Cutter sensor                                                | Generic      | Digital        |
-| DEVID_DIST_225MM      | Distance sensor, range 225 mm                                | Generic      | Analog/Digital |
-| DEVID_DIST_22MM       | Distance sensor, range 22 mm                                 | Generic      | Analog/Digital |
-| DEVID_ACCEL_XYZ       | Accelerometer, 3-axis                                        | Generic      | I2C/SPI        |
+```bash
+# Install Python dependencies
+pip install -r requirements.txt
 
+# Discover devices on network
+python utils/discover.py --port /dev/ttyUSB0
 
-## Other remarks
-### low latency USB Serial
-```shell
-echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer  # change ttyUSB0 for your device
+# Read sensor values in real-time
+python utils/read_pvs.py --address 1 --port /dev/ttyUSB0
 ```
 
-### Using Udev Rules under /etc/udev/rules.d/50-custom.rules:
-```shell
-KERNEL=="tty[A-Z]*[0-9]|pppox[0-9]*|ircomm[0-9]*|noz[0-9]*|rfcomm[0-9]*", GROUP="dialout"
+## Supported Sensors
 
-# USB latency rules
-ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
+### Digital Inclinometers
+| Type | Range | Resolution | Interface | Manufacturer |
+|------|-------|------------|-----------|--------------|
+| SCL3300 | ±90° | 0.002° | SPI | Murata |
+| SCL3400 | ±30° | 0.001° | SPI | Murata |
+
+### Analog/Digital I/O
+| Type | Description | Channels | Interface |
+|------|-------------|----------|-----------|
+| AnalogInput | 12-bit ADC with oversampling | 4 inputs | ADC |
+| 4DI4DO | Digital I/O module | 4 in + 4 out | GPIO |
+
+### Pressure Sensors
+| Type | Range | Interface | Manufacturer |
+|------|-------|-----------|--------------|
+| ABP | 0-60 mbar differential | I2C/SPI | Honeywell |
+
+### Environmental Sensors
+| Type | Measurement | Interface | Notes |
+|------|-------------|-----------|-------|
+| DS18B20 | Temperature | 1-Wire | Multiple sensors on bus |
+| LIS2DW12 | 3-axis acceleration | I2C/SPI | ST Microelectronics |
+
+## Usage Examples
+
+### Basic Sensor Reading
+
+```python
+from xerxes_protocol import XerxesNetwork, XerxesRoot
+from serial import Serial
+
+# Connect to network
+serial = Serial('/dev/ttyUSB0', 115200)
+network = XerxesNetwork(serial).init()
+root = XerxesRoot(network)
+
+# Read from device at address 1
+device = root.getLeaf(1)
+values = device.readProcessValues()
+print(f"Sensor values: {values}")
 ```
+
+### Device Configuration
+
+```python
+# Set sampling rate to 100Hz
+device.writeRegister('desiredCycleTimeUs', 10000)
+
+# Enable free-running mode
+device.writeRegister('config', {'freeRun': True, 'calcStat': True})
+
+# Calibrate sensor (zero offset)
+device.calibrate()
+```
+
+### Batch Data Collection
+
+```bash
+# Continuous logging to file
+python utils/read_pvs.py --address 1 --output data.csv --duration 60
+
+# Calibrate multiple devices
+python utils/calibrate.py --address-range 1-10
+```
+
+## Architecture
+
+### Firmware Structure
+```
+src/
+├── Core/           # Main application logic, registers, communication
+├── Sensors/        # Device drivers (Generic, Murata, Honeywell, ST)
+├── Communication/  # RS485/UART interface and protocol handlers
+├── Hardware/       # Board definitions, initialization, power management
+└── Utils/          # Logging, GPIO, FFT processing
+```
+
+### Communication Protocol
+- **Physical layer**: RS485 with automatic direction control
+- **Protocol**: Xerxes binary protocol with CRC
+- **Addressing**: 8-bit device addresses (1-254)
+- **Commands**: Read/write registers, ping, sync, reset, sleep
+
+### Build Configuration
+```bash
+# Available device types
+DEVICE_TYPE: AnalogInput, SCL3300, SCL3400, 4DI4DO, ABP, temperature, etc.
+
+# Optional parameters
+-DDEVICE_ADDRESS=1      # Device network address (0-254)
+-DLOG_LEVEL=3           # 1=Error, 2=Warning, 3=Info, 4=Debug, 5=Trace
+-DCLKDIV=8              # Clock divider for timing-sensitive sensors
+```
+
+## Development
+
+### Adding New Sensors
+
+1. Create sensor driver in `src/Sensors/{Manufacturer}/`
+2. Implement required interface methods
+3. Add device type to `cmake/device-config.cmake`
+4. Test with provided utilities
+
+### Testing
+
+```bash
+# Run unit tests
+cd tests && python -m pytest
+
+# Hardware-in-loop testing
+python tests/read_distance_means.py --device-type AnalogInput
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Device not responding:**
+- Check wiring and power supply
+- Verify correct DEVICE_ADDRESS
+- Increase CLKDIV if timing issues occur
+
+**Communication errors:**
+- Ensure proper RS485 termination
+- Check baud rate settings (default: 115200)
+- Verify USB latency settings for development
+
+**Build failures:**
+- Update git submodules: `git submodule update --init --recursive`
+- Install Pico SDK and set PICO_SDK_PATH
+
+### USB Serial Optimization
+
+```bash
+# Reduce latency for development (Linux)
+echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+
+# Udev rules (/etc/udev/rules.d/50-xerxes.rules)
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="0403", ATTR{latency_timer}="1"
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Changelog
+
 ### 2024.12.17 - SR 
-* Removed LDO for 3V3_EXT
-* removed USR-switch
-* replaced MAX13487 with SP3485EN-L/TR (10Mbps)
+- Removed LDO for 3V3_EXT
+- Removed USR-switch  
+- Replaced MAX13487 with SP3485EN-L/TR (10Mbps)
