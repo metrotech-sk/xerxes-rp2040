@@ -1,6 +1,0 @@
-<map id="Xerxes::DiscreteAnalog" name="Xerxes::DiscreteAnalog">
-<area shape="rect" id="node1" title=" " alt="" coords="5,229,179,256"/>
-<area shape="rect" id="node2" href="$classXerxes_1_1AnalogInput.html" title="Analog input sensor class." alt="" coords="16,155,168,181"/>
-<area shape="rect" id="node3" href="$classXerxes_1_1Sensor.html" title="Sensor class." alt="" coords="33,80,151,107"/>
-<area shape="rect" id="node4" href="$classXerxes_1_1Peripheral.html" title="Peripheral base class with pure virtual functions &#45; init, update, stop." alt="" coords="22,5,162,32"/>
-</map>

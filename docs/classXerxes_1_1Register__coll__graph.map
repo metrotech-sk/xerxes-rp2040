@@ -1,5 +1,0 @@
-<map id="Xerxes::Register" name="Xerxes::Register">
-<area shape="rect" id="node1" title="Register class for storing all data in memory mapped registers." alt="" coords="5,184,135,211"/>
-<area shape="rect" id="node2" href="$unionConfigBitsUnion.html" title="Union to access the configuration bits as a byte." alt="" coords="7,95,133,121"/>
-<area shape="rect" id="node3" href="$structConfigBits.html" title="The configuration bits of the device." alt="" coords="25,5,115,32"/>
-</map>

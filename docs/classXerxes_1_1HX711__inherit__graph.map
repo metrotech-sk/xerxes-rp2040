@@ -1,5 +1,0 @@
-<map id="Xerxes::HX711" name="Xerxes::HX711">
-<area shape="rect" id="node1" title="HX711 ADC." alt="" coords="17,155,135,181"/>
-<area shape="rect" id="node2" href="$classXerxes_1_1Sensor.html" title="Sensor class." alt="" coords="17,80,135,107"/>
-<area shape="rect" id="node3" href="$classXerxes_1_1Peripheral.html" title="Peripheral base class with pure virtual functions &#45; init, update, stop." alt="" coords="5,5,147,32"/>
-</map>

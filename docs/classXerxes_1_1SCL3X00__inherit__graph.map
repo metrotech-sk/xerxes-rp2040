@@ -1,8 +1,0 @@
-<map id="Xerxes::SCL3X00" name="Xerxes::SCL3X00">
-<area shape="rect" id="node1" title=" " alt="" coords="163,155,295,181"/>
-<area shape="rect" id="node4" href="$classXerxes_1_1SCL3300.html" title=" " alt="" coords="5,229,136,256"/>
-<area shape="rect" id="node5" href="$classXerxes_1_1SCL3300a.html" title=" " alt="" coords="160,229,299,256"/>
-<area shape="rect" id="node6" href="$classXerxes_1_1SCL3400.html" title=" " alt="" coords="323,229,453,256"/>
-<area shape="rect" id="node2" href="$classXerxes_1_1Sensor.html" title="Sensor class." alt="" coords="170,80,289,107"/>
-<area shape="rect" id="node3" href="$classXerxes_1_1Peripheral.html" title="Peripheral base class with pure virtual functions &#45; init, update, stop." alt="" coords="159,5,300,32"/>
-</map>

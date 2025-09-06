@@ -1,4 +1,0 @@
-<map id="ConfigBitsUnion" name="ConfigBitsUnion">
-<area shape="rect" id="node1" title="Union to access the configuration bits as a byte." alt="" coords="5,95,132,121"/>
-<area shape="rect" id="node2" href="$structConfigBits.html" title="The configuration bits of the device." alt="" coords="24,5,113,32"/>
-</map>

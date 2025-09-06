@@ -1,5 +1,0 @@
-<map id="Xerxes::Network" name="Xerxes::Network">
-<area shape="rect" id="node1" title="Network interface class." alt="" coords="75,5,206,32"/>
-<area shape="rect" id="node2" href="$classXerxes_1_1EspUart.html" title=" " alt="" coords="5,80,132,107"/>
-<area shape="rect" id="node3" href="$classXerxes_1_1RS485.html" title="RS485 class for communication over RS485." alt="" coords="156,80,272,107"/>
-</map>
