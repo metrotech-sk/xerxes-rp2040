@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from xerxes_protocol import XerxesNetwork, XerxesRoot, Leaf
+from xerxes_protocol import (
+    XerxesNetwork,
+    XerxesRoot,
+    Leaf,
+    MessageIncomplete,
+    NetworkError,
+    ChecksumError,
+)
 import logging
 import argparse
 import time
@@ -11,7 +18,7 @@ log = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(description="Discover Xerxes devices on the network")
-    parser.add_argument("-t", "--timeout", type=float, default=0.021, help="timeout in seconds")
+    parser.add_argument("-t", "--timeout", type=float, default=0.1, help="timeout in seconds")
     parser.add_argument("-d", "--debug", action="store_true", help="enable debug logging")
     parser.add_argument("-p", "--port", type=str, default="/dev/ttyUSB0", help="serial port")
     parser.add_argument("-b", "--baudrate", type=int, default=115200, help="baudrate")
@@ -32,6 +39,7 @@ def main():
 
     cont = True
     while cont:
+        leaves = []
         log.info("Discovering devices...")
         for i in range(32):
             try:
@@ -39,36 +47,37 @@ def main():
                 pr = leaf.ping()
                 log.info(f"Found leaf {i} at address {i}")
                 log.info(f"DevID: {pr.dev_id}, latency: {pr.latency}s")
-            except TimeoutError:
+                leaves.append(leaf)
+            except (TimeoutError, MessageIncomplete, NetworkError, ChecksumError):
                 log.debug(f"Leaf {i} not found")
-            except ValueError:
-                log.warning(f"Error reading values from leaf {i}")
             except KeyboardInterrupt:
                 cont = False
                 break
+            except Exception as e:
+                log.warning(f"Error pinging leaf {i}: {e}")
 
         # clear console:
         print("\033[H\033[J")
 
         for l in leaves:
             try:
-                print(leaf.info)
+                print(l.info)
                 print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], pv0-3: {l.pv0:2.3f}, {l.pv1:2.3f}, {l.pv2:2.3f}, {l.pv3:2.3f}"
+                    f"Leaf {l.address}[{int(l.address)}], pv0-3: {l.pv0:2.3f}, {l.pv1:2.3f}, {l.pv2:2.3f}, {l.pv3:2.3f}"
                 )
                 print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], offset_pv0-3: {l.offset_pv0:2.3f}, {l.offset_pv1:2.3f}, {l.offset_pv2:2.3f}, {l.offset_pv3:2.3f}"
+                    f"Leaf {l.address}[{int(l.address)}], offset_pv0-3: {l.offset_pv0:2.3f}, {l.offset_pv1:2.3f}, {l.offset_pv2:2.3f}, {l.offset_pv3:2.3f}"
                 )
                 print(
-                    f"Leaf {l.address}[{int(bytes(l.address).hex(), 16)}], gain_pv0-3: {l.gain_pv0:2.3f}, {l.gain_pv1:2.3f}, {l.gain_pv2:2.3f}, {l.gain_pv3:2.3f}"
+                    f"Leaf {l.address}[{int(l.address)}], gain_pv0-3: {l.gain_pv0:2.3f}, {l.gain_pv1:2.3f}, {l.gain_pv2:2.3f}, {l.gain_pv3:2.3f}"
                 )
-            except TimeoutError:
-                log.warning(f"Leaf {l.address} not found")
-            except ValueError:
-                log.warning(f"Error reading values from leaf {l.address}")
+            except (TimeoutError, MessageIncomplete, NetworkError, ChecksumError) as e:
+                log.warning(f"Communication error with leaf {l.address}: {e}")
             except KeyboardInterrupt:
                 cont = False
                 break
+            except Exception as e:
+                log.warning(f"Error reading values from leaf {l.address}: {e}")
         time.sleep(0.5)
         log.debug(f"Found {leaves}")
 
